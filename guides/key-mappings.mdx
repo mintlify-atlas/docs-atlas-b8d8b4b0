@@ -1,0 +1,180 @@
+---
+title: 'Key Mappings'
+description: 'Learn how to create custom key mappings in CodeMirror Vim'
+icon: 'keyboard'
+---
+
+## Overview
+
+CodeMirror Vim allows you to create custom key mappings using the Vim API. You can map keys in different modes (normal, insert, visual) to customize your editing experience.
+
+## Basic Key Mapping
+
+Use `Vim.map()` to create custom key mappings:
+
+```typescript
+import { Vim } from "@replit/codemirror-vim";
+
+// Map 'Y' to yank to end of line (like 'y$')
+Vim.map("Y", "y$");
+```
+
+## Mapping Keys in Different Modes
+
+The third parameter specifies the context (mode) where the mapping applies.
+
+<Steps>
+  <Step title="Insert Mode Mappings">
+    Map keys that work only in insert mode:
+
+    ```javascript
+    // Map 'jj' to escape in insert mode
+    Vim.map("jj", "<Esc>", "insert");
+    ```
+
+    This is a popular mapping that allows you to quickly exit insert mode without reaching for the Escape key.
+  </Step>
+
+  <Step title="Normal Mode Mappings">
+    Map keys for normal mode (default when no context is specified):
+
+    ```javascript
+    // Map 'Y' to yank to end of line in normal mode
+    Vim.map("Y", "y$");
+    ```
+  </Step>
+
+  <Step title="Visual Mode Mappings">
+    Create mappings specifically for visual mode:
+
+    ```javascript
+    // Custom visual mode mapping
+    Vim.map("<Leader>c", "gc", "visual");
+    ```
+  </Step>
+</Steps>
+
+## Context Parameter
+
+The context parameter can be one of the following:
+
+- `"insert"` - Mapping applies only in insert mode
+- `"normal"` - Mapping applies only in normal mode
+- `"visual"` - Mapping applies only in visual mode
+- Omitted - Mapping applies in normal mode by default
+
+<Note>
+  Context-specific mappings allow you to use the same key combination for different actions depending on the current mode.
+</Note>
+
+## Common Mapping Examples
+
+<CodeGroup>
+```javascript Insert Mode Escapes
+// Popular insert mode escape sequences
+Vim.map("jj", "<Esc>", "insert");
+Vim.map("jk", "<Esc>", "insert");
+Vim.map("kj", "<Esc>", "insert");
+```
+
+```javascript Normal Mode Enhancements
+// Yank to end of line (like D and C)
+Vim.map("Y", "y$");
+
+// Quick save (if you've defined a 'write' ex command)
+Vim.map("<C-s>", ":w<CR>");
+```
+
+```javascript Navigation
+// Center screen after search
+Vim.map("n", "nzz");
+Vim.map("N", "Nzz");
+
+// Move between splits
+Vim.map("<C-h>", "<C-w>h");
+Vim.map("<C-j>", "<C-w>j");
+Vim.map("<C-k>", "<C-w>k");
+Vim.map("<C-l>", "<C-w>l");
+```
+</CodeGroup>
+
+## Unmapping Keys
+
+Remove a previously defined mapping with `Vim.unmap()`:
+
+```javascript
+// Remove the 'jj' mapping in insert mode
+Vim.unmap("jj", "insert");
+```
+
+<Warning>
+  Be careful when unmapping default Vim keys, as this may affect standard Vim behavior.
+</Warning>
+
+## Special Key Notation
+
+CodeMirror Vim supports Vim's special key notation:
+
+- `<Esc>` - Escape key
+- `<CR>` - Enter/Return
+- `<Space>` - Space bar
+- `<BS>` - Backspace
+- `<C-x>` - Control + x
+- `<A-x>` - Alt + x
+- `<S-x>` - Shift + x
+- `<Leader>` - Leader key (if configured)
+
+<Tip>
+  Use angle brackets `<>` to represent special keys, just like in Vim configuration files.
+</Tip>
+
+## API Reference
+
+### Vim.map()
+
+Map a key sequence to another key sequence or command.
+
+```typescript
+Vim.map(lhs: string, rhs: string, context?: string): void
+```
+
+**Parameters:**
+- `lhs` - Left-hand side: the key(s) to map
+- `rhs` - Right-hand side: the key(s) or command to execute
+- `context` - Optional mode context: `"insert"`, `"normal"`, or `"visual"`
+
+### Vim.unmap()
+
+Remove a key mapping.
+
+```typescript
+Vim.unmap(lhs: string, context: string): void
+```
+
+**Parameters:**
+- `lhs` - The key(s) to unmap
+- `context` - The mode context where the mapping should be removed
+
+## Complete Example
+
+Here's a complete example setting up custom mappings:
+
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim, Vim } from "@replit/codemirror-vim";
+
+// Create editor
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    vim(),
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+
+// Set up custom mappings
+Vim.map("jj", "<Esc>", "insert");  // Quick escape
+Vim.map("Y", "y$");                 // Yank to end of line
+Vim.map("<C-s>", ":w<CR>");         // Save shortcut (if write command defined)
+```

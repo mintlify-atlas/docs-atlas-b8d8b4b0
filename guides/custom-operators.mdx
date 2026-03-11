@@ -1,0 +1,409 @@
+---
+title: 'Custom Operators'
+description: 'Create custom operators, actions, and motions for CodeMirror Vim'
+icon: 'wand-magic-sparkles'
+---
+
+## Overview
+
+CodeMirror Vim allows you to extend Vim's functionality by defining custom operators, actions, and motions. This enables you to create powerful text manipulation commands tailored to your needs.
+
+## Defining Custom Operators
+
+Operators are commands that act on text objects or motions (like `d` for delete, `c` for change, or `y` for yank).
+
+### Vim.defineOperator()
+
+Use `Vim.defineOperator()` to create a custom operator:
+
+```javascript
+import { Vim, getCM } from "@replit/codemirror-vim";
+
+Vim.defineOperator("hardWrap", function(cm, operatorArgs, ranges, oldAnchor, newHead) {
+  // Operator implementation
+  // Make changes and return new cursor position
+  return newHead;
+});
+```
+
+### Operator Function Signature
+
+```typescript
+type OperatorFn = (
+  cm: CodeMirrorV,
+  args: OperatorArgs,
+  ranges: CM5RangeInterface[],
+  oldAnchor: Pos,
+  newHead?: Pos
+) => Pos | void
+```
+
+**Parameters:**
+- `cm` - CodeMirror instance with Vim state
+- `args` - Operator arguments (repeat count, register, etc.)
+- `ranges` - Array of text ranges to operate on
+- `oldAnchor` - Previous cursor anchor position
+- `newHead` - New cursor head position
+
+**Returns:** New cursor position (optional)
+
+## Hard Wrap Example
+
+Here's the complete hard wrap operator example from the README:
+
+```javascript
+import { vim, Vim, getCM } from "@replit/codemirror-vim";
+import { defaultKeymap } from "@replit/codemirror-vim";
+
+// Add custom key to the default keymap
+defaultKeymap.push({
+  keys: 'gq',
+  type: 'operator',
+  operator: 'hardWrap'
+});
+
+// Define the hardWrap operator
+Vim.defineOperator("hardWrap", function(cm, operatorArgs, ranges, oldAnchor, newHead) {
+  // Get text width setting
+  const textWidth = cm.getOption('textwidth') || 80;
+  
+  // Process each range
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
+    const from = range.anchor;
+    const to = range.head;
+    
+    // Get text in range
+    const text = cm.getRange(from, to);
+    
+    // Wrap the text
+    const wrapped = wrapText(text, textWidth);
+    
+    // Replace the range
+    cm.replaceRange(wrapped, from, to);
+  }
+  
+  // Return new cursor position
+  return newHead;
+});
+
+function wrapText(text, width) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let currentLine = '';
+  
+  for (const word of words) {
+    if (currentLine.length + word.length + 1 <= width) {
+      currentLine += (currentLine ? ' ' : '') + word;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  
+  if (currentLine) lines.push(currentLine);
+  return lines.join('\n');
+}
+```
+
+<Note>
+  After defining an operator, you need to add it to the keymap to bind it to specific keys.
+</Note>
+
+## Adding Operators to the Keymap
+
+To make your operator accessible, add it to the `defaultKeymap`:
+
+```javascript
+import { defaultKeymap } from "@replit/codemirror-vim";
+
+// Add operator to keymap
+defaultKeymap.push({
+  keys: 'gq',           // Key combination
+  type: 'operator',     // Command type
+  operator: 'hardWrap'  // Operator name
+});
+```
+
+<Tip>
+  Choose key combinations that don't conflict with existing Vim commands, or use leader keys.
+</Tip>
+
+## Defining Custom Actions
+
+Actions are commands that perform a specific operation (like `dd` to delete a line or `o` to open a new line).
+
+### Vim.defineAction()
+
+```javascript
+Vim.defineAction("myAction", function(cm, actionArgs, vim) {
+  // Perform action
+  const cursor = cm.getCursor();
+  cm.replaceRange('Hello!', cursor);
+});
+```
+
+### Action Function Signature
+
+```typescript
+type ActionFn = (
+  cm: CodeMirrorV,
+  actionArgs: ActionArgs,
+  vim: vimState
+) => void
+```
+
+**Parameters:**
+- `cm` - CodeMirror instance
+- `actionArgs` - Action arguments (repeat count, etc.)
+- `vim` - Current Vim state
+
+## Custom Action Examples
+
+<CodeGroup>
+```javascript Insert Timestamp
+Vim.defineAction("insertTimestamp", function(cm) {
+  const timestamp = new Date().toISOString();
+  const cursor = cm.getCursor();
+  cm.replaceRange(timestamp, cursor);
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: '<Leader>t',
+  type: 'action',
+  action: 'insertTimestamp'
+});
+```
+
+```javascript Duplicate Line
+Vim.defineAction("duplicateLine", function(cm, actionArgs) {
+  const cursor = cm.getCursor();
+  const line = cm.getLine(cursor.line);
+  cm.replaceRange('\n' + line, { line: cursor.line, ch: Infinity });
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: '<Leader>d',
+  type: 'action',
+  action: 'duplicateLine',
+  context: 'normal'
+});
+```
+
+```javascript Sort Selection
+Vim.defineAction("sortLines", function(cm) {
+  const selection = cm.getSelection();
+  const lines = selection.split('\n');
+  const sorted = lines.sort().join('\n');
+  cm.replaceSelection(sorted);
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: '<Leader>s',
+  type: 'action',
+  action: 'sortLines',
+  context: 'visual'
+});
+```
+</CodeGroup>
+
+## Defining Custom Motions
+
+Motions are commands that move the cursor (like `w` for word, `j` for down, `}` for paragraph).
+
+### Vim.defineMotion()
+
+```javascript
+Vim.defineMotion("myMotion", function(cm, head, motionArgs, vim, inputState) {
+  // Calculate new position
+  const newPos = { line: head.line + 1, ch: 0 };
+  return newPos;
+});
+```
+
+### Motion Function Signature
+
+```typescript
+type MotionFn = (
+  cm: CodeMirrorV,
+  head: Pos,
+  motionArgs: MotionArgs,
+  vim: vimState,
+  inputState: InputStateInterface
+) => Pos | [Pos, Pos] | null | undefined
+```
+
+**Parameters:**
+- `cm` - CodeMirror instance
+- `head` - Current cursor position
+- `motionArgs` - Motion arguments (repeat, forward, etc.)
+- `vim` - Vim state
+- `inputState` - Input state
+
+**Returns:** New position, or range for text objects
+
+## Custom Motion Examples
+
+<CodeGroup>
+```javascript Move to Next Blank Line
+Vim.defineMotion("nextBlankLine", function(cm, head, motionArgs) {
+  const forward = motionArgs.forward !== false;
+  const lineCount = cm.lineCount();
+  let line = head.line;
+  
+  while (forward ? line < lineCount - 1 : line > 0) {
+    line += forward ? 1 : -1;
+    const lineText = cm.getLine(line);
+    if (lineText.trim() === '') {
+      return { line: line, ch: 0 };
+    }
+  }
+  
+  return head;
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: ']b',
+  type: 'motion',
+  motion: 'nextBlankLine',
+  motionArgs: { forward: true }
+});
+
+defaultKeymap.push({
+  keys: '[b',
+  type: 'motion',
+  motion: 'nextBlankLine',
+  motionArgs: { forward: false }
+});
+```
+
+```javascript Move to Next Function
+Vim.defineMotion("nextFunction", function(cm, head, motionArgs) {
+  const forward = motionArgs.forward !== false;
+  const lineCount = cm.lineCount();
+  let line = head.line;
+  
+  const functionRegex = /^\s*function\s+\w+/;
+  
+  while (forward ? line < lineCount - 1 : line > 0) {
+    line += forward ? 1 : -1;
+    const lineText = cm.getLine(line);
+    if (functionRegex.test(lineText)) {
+      return { line: line, ch: 0 };
+    }
+  }
+  
+  return head;
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: ']f',
+  type: 'motion',
+  motion: 'nextFunction',
+  motionArgs: { forward: true, toJumplist: true }
+});
+```
+</CodeGroup>
+
+## Operator Arguments
+
+The `OperatorArgs` type contains useful information:
+
+```typescript
+type OperatorArgs = {
+  repeat?: number,           // Repeat count
+  forward?: boolean,         // Direction
+  linewise?: boolean,        // Line-wise operation
+  fullLine?: boolean,        // Full line mode
+  registerName?: string,     // Target register
+  indentRight?: boolean,     // Indent direction
+  toLower?: boolean,         // Case conversion
+  shouldMoveCursor?: boolean,// Move cursor after
+  keepCursor?: boolean       // Keep cursor position
+}
+```
+
+## Complete Example: Comment Operator
+
+```javascript
+import { vim, Vim } from "@replit/codemirror-vim";
+import { defaultKeymap } from "@replit/codemirror-vim";
+
+// Define comment operator
+Vim.defineOperator("toggleComment", function(cm, operatorArgs, ranges) {
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
+    const startLine = Math.min(range.anchor.line, range.head.line);
+    const endLine = Math.max(range.anchor.line, range.head.line);
+    
+    // Check if lines are commented
+    let allCommented = true;
+    for (let line = startLine; line <= endLine; line++) {
+      const text = cm.getLine(line);
+      if (!text.trim().startsWith('//')) {
+        allCommented = false;
+        break;
+      }
+    }
+    
+    // Toggle comments
+    for (let line = startLine; line <= endLine; line++) {
+      const text = cm.getLine(line);
+      if (allCommented) {
+        // Remove comment
+        const newText = text.replace(/^\/\/\s?/, '');
+        cm.replaceRange(newText, { line, ch: 0 }, { line, ch: text.length });
+      } else {
+        // Add comment
+        cm.replaceRange('// ', { line, ch: 0 });
+      }
+    }
+  }
+});
+
+// Add to keymap with 'gc' keys
+defaultKeymap.push({
+  keys: 'gc',
+  type: 'operator',
+  operator: 'toggleComment',
+  isEdit: true
+});
+```
+
+<Warning>
+  When modifying `defaultKeymap`, make sure to do so before initializing the vim extension in your editor.
+</Warning>
+
+## Best Practices
+
+<Steps>
+  <Step title="Handle Edge Cases">
+    Always check for boundary conditions and invalid input:
+
+    ```javascript
+    if (line < 0 || line >= cm.lineCount()) {
+      return head; // Return original position
+    }
+    ```
+  </Step>
+
+  <Step title="Respect Vim Conventions">
+    Follow Vim's behavior patterns for consistency:
+    - Return new cursor position from operators
+    - Handle repeat counts properly
+    - Support visual mode when appropriate
+  </Step>
+
+  <Step title="Test Thoroughly">
+    Test your custom commands in different scenarios:
+    - With different repeat counts (e.g., `3gq`)
+    - In visual mode
+    - With empty selections
+    - At document boundaries
+  </Step>
+</Steps>

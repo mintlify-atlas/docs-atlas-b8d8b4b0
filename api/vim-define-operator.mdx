@@ -1,0 +1,197 @@
+---
+title: 'Vim.defineOperator()'
+description: 'Define custom operators that act on text selections in Vim mode'
+---
+
+## Overview
+
+The `Vim.defineOperator()` function creates custom Vim operators. Operators in Vim act on motions or text objects (like `d` for delete, `y` for yank, or `c` for change). After defining an operator, you can use it with any motion or in visual mode.
+
+## Signature
+
+```typescript
+Vim.defineOperator(
+  name: string,
+  callback: (cm: CodeMirror, args: OperatorArgs, ranges: Range[], oldAnchor: Pos, newHead: Pos) => Pos | void
+): void
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  The name of the operator. This name is used to reference the operator in keymaps.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function to execute when the operator is invoked. Receives:
+  
+  - `cm` (CodeMirror) - The editor instance
+  - `args` (OperatorArgs) - Operator arguments including:
+    - `repeat` (number) - Repeat count
+    - `linewise` (boolean) - Whether operation is linewise
+    - `forward` (boolean) - Direction of operation
+    - `registerName` (string) - Target register
+  - `ranges` (Range[]) - Array of selection ranges, each with:
+    - `anchor` (Pos) - Start position
+    - `head` (Pos) - End position
+  - `oldAnchor` (Pos) - Original anchor position before operation
+  - `newHead` (Pos) - New head position after operation
+  
+  Should return a `Pos` object for the new cursor position, or `void` to keep current position.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Hard Wrap Operator
+
+Define a `hardWrap` operator that wraps text at a specified width:
+
+```javascript
+import { Vim, getCM } from "@replit/codemirror-vim";
+
+// Add to keymap first
+Vim.mapCommand({
+  keys: 'gq',
+  type: 'operator',
+  operator: 'hardWrap'
+});
+
+// Define the operator
+Vim.defineOperator("hardWrap", function(cm, operatorArgs, ranges, oldAnchor, newHead) {
+  // Get the text width from options
+  const width = cm.getOption('textwidth') || 80;
+  
+  // Process each range
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
+    const from = range.anchor;
+    const to = range.head;
+    
+    // Get the text in the range
+    const text = cm.getRange(from, to);
+    
+    // Wrap the text
+    const wrapped = wrapText(text, width);
+    
+    // Replace the range
+    cm.replaceRange(wrapped, from, to);
+  }
+  
+  // Return new cursor position
+  return oldAnchor;
+});
+
+function wrapText(text, width) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let currentLine = '';
+  
+  for (const word of words) {
+    if (currentLine.length + word.length + 1 > width) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine += (currentLine ? ' ' : '') + word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  
+  return lines.join('\n');
+}
+```
+
+### Sort Operator
+
+Define an operator to sort lines:
+
+```javascript
+Vim.mapCommand({
+  keys: 'gs',
+  type: 'operator',
+  operator: 'sort'
+});
+
+Vim.defineOperator("sort", function(cm, operatorArgs, ranges) {
+  for (const range of ranges) {
+    const from = range.anchor;
+    const to = range.head;
+    
+    // Get line range
+    const startLine = Math.min(from.line, to.line);
+    const endLine = Math.max(from.line, to.line);
+    
+    // Get lines and sort
+    const lines = [];
+    for (let i = startLine; i <= endLine; i++) {
+      lines.push(cm.getLine(i));
+    }
+    lines.sort();
+    
+    // Replace lines
+    cm.replaceRange(
+      lines.join('\n'),
+      { line: startLine, ch: 0 },
+      { line: endLine, ch: cm.getLine(endLine).length }
+    );
+  }
+});
+
+// Usage: gsip (sort inner paragraph)
+```
+
+### Case Toggle Operator
+
+Define an operator that toggles text case:
+
+```javascript
+Vim.mapCommand({
+  keys: 'gt',
+  type: 'operator',
+  operator: 'toggleCase'
+});
+
+Vim.defineOperator("toggleCase", function(cm, operatorArgs, ranges) {
+  for (const range of ranges) {
+    const text = cm.getRange(range.anchor, range.head);
+    const toggled = text.split('').map(char => {
+      const lower = char.toLowerCase();
+      return char === lower ? char.toUpperCase() : lower;
+    }).join('');
+    
+    cm.replaceRange(toggled, range.anchor, range.head);
+  }
+  
+  return ranges[0].anchor;
+});
+
+// Usage: gtiw (toggle case inner word)
+```
+
+## Usage
+
+After defining an operator, you can use it with:
+
+- **Motions**: `<operator><motion>` (e.g., `gqip` for hard wrap inner paragraph)
+- **Visual mode**: Select text and press the operator keys
+- **Line-wise**: Double the operator key (e.g., `gqgq` for current line)
+- **Counts**: Prefix with a count (e.g., `3gqj` for 3 lines down)
+
+## Notes
+
+- Operators must be added to the keymap using `Vim.mapCommand()` before they can be used
+- The `ranges` array typically contains one range, but may have multiple in visual block mode
+- Return a `Pos` object to set the cursor position after the operation
+- If you don't return a value, the cursor remains at its current position
+- Operators work with all built-in motions and text objects
+
+## See Also
+
+- [Vim.defineMotion()](/api/vim-define-motion) - Define custom motions
+- [Vim.defineAction()](/api/vim-define-action) - Define custom actions
+- [Vim.mapCommand()](/api/vim-map-command) - Add commands to keymap

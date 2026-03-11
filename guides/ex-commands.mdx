@@ -1,0 +1,293 @@
+---
+title: 'Ex Commands'
+description: 'Define custom ex commands for CodeMirror Vim'
+icon: 'terminal'
+---
+
+## Overview
+
+Ex commands are Vim's command-line commands that you access by typing `:` in normal mode. CodeMirror Vim allows you to define custom ex commands to extend functionality.
+
+## Defining Ex Commands
+
+Use `Vim.defineEx()` to create custom ex commands:
+
+```javascript
+import { Vim, getCM } from "@replit/codemirror-vim";
+
+Vim.defineEx('write', 'w', function(cm) {
+  // Save the file
+  console.log('Saving file...');
+  // Your save logic here
+});
+```
+
+<Note>
+  The second parameter is the short name for the command. In this example, both `:write` and `:w` will trigger the command.
+</Note>
+
+## Command Syntax
+
+### Basic Command Definition
+
+```typescript
+Vim.defineEx(
+  name: string,
+  shortName: string,
+  callback: (cm: CodeMirror, params: ExParams) => void
+): void
+```
+
+**Parameters:**
+- `name` - Full command name
+- `shortName` - Abbreviated command name (can be the same as name)
+- `callback` - Function to execute when the command is called
+
+## Command Parameters
+
+The callback function receives two arguments:
+
+<Steps>
+  <Step title="CodeMirror Instance (cm)">
+    The CodeMirror adapter instance that you can use to access the CM5 API:
+
+    ```javascript
+    Vim.defineEx('uppercase', 'up', function(cm) {
+      const selection = cm.getSelection();
+      cm.replaceSelection(selection.toUpperCase());
+    });
+    ```
+  </Step>
+
+  <Step title="ExParams Object">
+    Contains information about the command invocation:
+
+    ```typescript
+    type ExParams = {
+      commandName: string,      // The command name used
+      argString: string,        // The argument string
+      input: string,            // Full input line
+      args?: string[],          // Parsed arguments array
+      line: number,             // Starting line number
+      lineEnd?: number,         // Ending line number (for ranges)
+      selectionLine: number,    // Selected line start
+      selectionLineEnd?: number // Selected line end
+    }
+    ```
+  </Step>
+</Steps>
+
+## Practical Examples
+
+### Save Command
+
+```javascript
+Vim.defineEx('write', 'w', function(cm) {
+  // Integrate with your application's save functionality
+  const content = cm.getValue();
+  saveToBackend(content);
+});
+
+// Usage in editor: :w or :write
+```
+
+### Custom Search and Replace
+
+```javascript
+Vim.defineEx('replace', 'rep', function(cm, params) {
+  if (!params.args || params.args.length < 2) {
+    console.error('Usage: :replace <search> <replace>');
+    return;
+  }
+  
+  const [search, replace] = params.args;
+  const content = cm.getValue();
+  const newContent = content.replace(new RegExp(search, 'g'), replace);
+  cm.setValue(newContent);
+});
+
+// Usage: :replace oldText newText
+```
+
+### Insert Date Command
+
+```javascript
+Vim.defineEx('date', 'date', function(cm) {
+  const date = new Date().toISOString().split('T')[0];
+  const cursor = cm.getCursor();
+  cm.replaceRange(date, cursor);
+});
+
+// Usage: :date
+```
+
+### Line Range Commands
+
+```javascript
+Vim.defineEx('comment', 'com', function(cm, params) {
+  const startLine = params.line;
+  const endLine = params.lineEnd || startLine;
+  
+  for (let i = startLine; i <= endLine; i++) {
+    const lineContent = cm.getLine(i);
+    cm.replaceRange('// ', { line: i, ch: 0 });
+  }
+});
+
+// Usage: :5,10comment (comments lines 5-10)
+```
+
+<CodeGroup>
+```javascript File Operations
+Vim.defineEx('write', 'w', function(cm) {
+  const content = cm.getValue();
+  // Save logic
+  console.log('File saved');
+});
+
+Vim.defineEx('quit', 'q', function(cm) {
+  // Close editor logic
+  console.log('Closing editor');
+});
+
+Vim.defineEx('wq', 'wq', function(cm) {
+  // Save and quit
+  const content = cm.getValue();
+  // Save logic
+  // Close logic
+});
+```
+
+```javascript Text Manipulation
+Vim.defineEx('upper', 'up', function(cm) {
+  const selection = cm.getSelection();
+  cm.replaceSelection(selection.toUpperCase());
+});
+
+Vim.defineEx('lower', 'low', function(cm) {
+  const selection = cm.getSelection();
+  cm.replaceSelection(selection.toLowerCase());
+});
+
+Vim.defineEx('trim', 'trim', function(cm) {
+  const content = cm.getValue();
+  cm.setValue(content.split('\n').map(line => line.trim()).join('\n'));
+});
+```
+
+```javascript Editor Operations
+Vim.defineEx('clear', 'cl', function(cm) {
+  cm.setValue('');
+});
+
+Vim.defineEx('readonly', 'ro', function(cm) {
+  cm.setOption('readOnly', true);
+});
+
+Vim.defineEx('editable', 'edit', function(cm) {
+  cm.setOption('readOnly', false);
+});
+```
+</CodeGroup>
+
+## Built-in Ex Commands
+
+CodeMirror Vim includes many built-in ex commands from the defaultExCommandMap:
+
+- `:write` / `:w` - Write file (if implemented)
+- `:quit` / `:q` - Quit (if implemented)
+- `:substitute` / `:s` - Search and replace
+- `:set` - Set options
+- `:map` / `:imap` / `:nmap` / `:vmap` - Create mappings
+- `:undo` / `:u` - Undo
+- `:redo` / `:red` - Redo
+- `:yank` / `:y` - Yank lines
+- `:delete` / `:d` - Delete lines
+- `:join` / `:j` - Join lines
+- `:sort` - Sort lines
+- `:global` / `:g` - Execute command on matching lines
+- `:nohlsearch` / `:noh` - Clear search highlighting
+- `:marks` - Show marks
+- `:registers` / `:reg` - Show registers
+
+<Warning>
+  Some built-in commands may require additional implementation in your application (like `:write` for saving files).
+</Warning>
+
+## Accessing the CodeMirror Instance
+
+You can access the CM5 API through the `cm` parameter:
+
+```javascript
+Vim.defineEx('info', 'info', function(cm) {
+  const lineCount = cm.lineCount();
+  const cursor = cm.getCursor();
+  const selection = cm.getSelection();
+  
+  console.log(`Lines: ${lineCount}`);
+  console.log(`Cursor: line ${cursor.line}, ch ${cursor.ch}`);
+  console.log(`Selection: ${selection.length} characters`);
+});
+```
+
+## Error Handling
+
+<Tip>
+  Always validate parameters and provide helpful error messages:
+</Tip>
+
+```javascript
+Vim.defineEx('goto', 'go', function(cm, params) {
+  if (!params.args || params.args.length === 0) {
+    console.error('Usage: :goto <line_number>');
+    return;
+  }
+  
+  const lineNum = parseInt(params.args[0], 10);
+  
+  if (isNaN(lineNum)) {
+    console.error('Invalid line number');
+    return;
+  }
+  
+  if (lineNum < 0 || lineNum >= cm.lineCount()) {
+    console.error('Line number out of range');
+    return;
+  }
+  
+  cm.setCursor({ line: lineNum, ch: 0 });
+});
+```
+
+## Complete Integration Example
+
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim, Vim, getCM } from "@replit/codemirror-vim";
+
+let view = new EditorView({
+  doc: "Hello, Vim!",
+  extensions: [vim(), basicSetup],
+  parent: document.querySelector('#editor'),
+});
+
+// Get the CodeMirror adapter
+const cm = getCM(view);
+
+// Define custom commands
+Vim.defineEx('write', 'w', function() {
+  const content = view.state.doc.toString();
+  localStorage.setItem('document', content);
+  console.log('Document saved!');
+});
+
+Vim.defineEx('load', 'lo', function() {
+  const content = localStorage.getItem('document');
+  if (content) {
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: content }
+    });
+    console.log('Document loaded!');
+  }
+});
+```

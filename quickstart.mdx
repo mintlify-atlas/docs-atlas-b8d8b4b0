@@ -1,80 +1,139 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Set up a CodeMirror editor with Vim keybindings in minutes
 ---
 
-## Get started in three steps
+## Basic setup
 
-Get your documentation site running locally and make your first customization.
+Follow these steps to create a working CodeMirror editor with Vim keybindings.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Import required packages">
+    Import the Vim extension and CodeMirror core packages:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+    ```javascript
+    import { basicSetup, EditorView } from 'codemirror';
+    import { vim } from "@replit/codemirror-vim";
+    ```
+  </Step>
+
+  <Step title="Create the editor">
+    Initialize a new `EditorView` with the Vim extension:
+
+    ```javascript
+    let view = new EditorView({
+      doc: "",
+      extensions: [
+        // make sure vim is included before other keymaps
+        vim(), 
+        // include the default keymap and all other keymaps you want to use in insert mode
+        basicSetup, 
+      ],
+      parent: document.querySelector('#editor'),
+    })
+    ```
+
+    <Warning>
+    The `vim()` extension **must** be included before other keymaps in the extensions array. This ensures Vim keybindings take precedence in normal mode while allowing other keymaps to function properly in insert mode.
+    </Warning>
+  </Step>
+
+  <Step title="Add an editor container to your HTML">
+    Create a DOM element where the editor will be mounted:
+
+    ```html
+    <div id="editor"></div>
+    ```
+  </Step>
+
+  <Step title="Test Vim functionality">
+    Open your application and verify Vim keybindings are working:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    - Press `i` to enter insert mode
+    - Type some text
+    - Press `Esc` to return to normal mode
+    - Use `h`, `j`, `k`, `l` to navigate
+    - Try other Vim commands like `dd`, `yy`, `p`, etc.
+  </Step>
+</Steps>
 
-### Step 2: Deploy your changes
+## Complete example
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Here's a full working example you can copy and paste:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from "@replit/codemirror-vim"
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    // make sure vim is included before other keymaps
+    vim(), 
+    // include the default keymap and all other keymaps you want to use in insert mode
+    basicSetup, 
+  ],
+  parent: document.querySelector('#editor'),
+})
+```
 
-### Step 3: Go live
+## Understanding the `vim()` function
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+The `vim()` function returns a CodeMirror extension that adds Vim keybindings to your editor. It accepts an optional configuration object:
+
+```typescript
+vim(options?: { status?: boolean })
+```
+
+### Options
+
+- `status` (boolean, optional): When `true`, displays a status bar showing the current Vim mode (e.g., "--NORMAL--", "--INSERT--"). Defaults to `false`.
+
+### Example with status bar
+
+```javascript
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    vim({ status: true }), // Enable status bar
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+})
+```
+
+## Important notes
+
+<Note>
+If you're **not** using `basicSetup`, make sure you include the [drawSelection](https://codemirror.net/docs/ref/#view.drawSelection) plugin to correctly render the selection in visual mode.
+</Note>
+
+### Extension ordering matters
+
+The Vim extension must come **before** other keymaps in the extensions array:
+
+```javascript
+// ✅ Correct: vim() comes first
+extensions: [vim(), basicSetup]
+
+// ❌ Incorrect: other keymaps before vim
+extensions: [basicSetup, vim()]
+```
+
+This ordering ensures that:
+- Vim keybindings work correctly in normal mode
+- Default keybindings (from `basicSetup`) remain available in insert mode
+- Other custom keymaps can coexist with Vim bindings
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you have a working Vim-enabled editor, explore advanced features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Customization" icon="sliders" href="/guides/customization">
+    Learn how to customize keybindings and ex commands
+  </Card>
+  <Card title="Vim API" icon="code" href="/guides/vim-api">
+    Access the Vim API to programmatically control the editor
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

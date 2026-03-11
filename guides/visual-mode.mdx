@@ -1,0 +1,364 @@
+---
+title: 'Visual Mode'
+description: 'Understanding and working with visual mode in CodeMirror Vim'
+icon: 'eye'
+---
+
+## Overview
+
+Visual mode is one of Vim's most powerful features, allowing you to select text and perform operations on the selection. CodeMirror Vim supports all three types of visual mode: character-wise, line-wise, and block-wise.
+
+## Visual Mode Types
+
+CodeMirror Vim implements three visual modes, matching standard Vim behavior:
+
+<Steps>
+  <Step title="Character-wise Visual Mode (v)">
+    Select characters individually. Press `v` in normal mode to enter.
+
+    ```javascript
+    // In normal mode, press:
+    // v - enter visual mode
+    // motion commands (h, j, k, l, w, e, etc.) to extend selection
+    // operator (d, y, c, etc.) to act on selection
+    ```
+
+    **Use cases:**
+    - Selecting specific words or characters
+    - Precise text manipulation
+    - Selecting parts of lines
+  </Step>
+
+  <Step title="Line-wise Visual Mode (V)">
+    Select entire lines at a time. Press `V` (Shift+v) in normal mode.
+
+    ```javascript
+    // In normal mode, press:
+    // V - enter visual line mode
+    // j/k to select more lines
+    // operator to act on complete lines
+    ```
+
+    **Use cases:**
+    - Deleting multiple lines
+    - Moving blocks of code
+    - Indenting sections
+  </Step>
+
+  <Step title="Block-wise Visual Mode (Ctrl+v)">
+    Select rectangular blocks of text. Press `Ctrl+v` in normal mode.
+
+    ```javascript
+    // In normal mode, press:
+    // Ctrl+v (or Ctrl+q) - enter visual block mode
+    // motion commands to define rectangle
+    // operator to act on block
+    ```
+
+    **Use cases:**
+    - Editing columns in aligned text
+    - Adding/removing prefixes to multiple lines
+    - Working with tabular data
+  </Step>
+</Steps>
+
+## Entering Visual Mode
+
+From normal mode, use these keys to enter different visual modes:
+
+- `v` - Character-wise visual mode
+- `V` - Line-wise visual mode
+- `<Ctrl-v>` - Block-wise visual mode
+- `<Ctrl-q>` - Alternative for block-wise (useful when Ctrl+v is paste)
+- `gv` - Reselect the last visual selection
+
+<CodeGroup>
+```javascript Character Visual
+// From the default keymap:
+{
+  keys: 'v',
+  type: 'action',
+  action: 'toggleVisualMode'
+}
+
+// Usage:
+// 1. Press 'v' in normal mode
+// 2. Use motions (w, e, $, etc.) to select
+// 3. Press operator (d, y, c) to act
+```
+
+```javascript Line Visual
+// From the default keymap:
+{
+  keys: 'V',
+  type: 'action',
+  action: 'toggleVisualMode',
+  actionArgs: { linewise: true }
+}
+
+// Usage:
+// 1. Press 'V' in normal mode
+// 2. Use j/k to select lines
+// 3. Press operator to act on lines
+```
+
+```javascript Block Visual
+// From the default keymap:
+{
+  keys: '<C-v>',
+  type: 'action',
+  action: 'toggleVisualMode',
+  actionArgs: { blockwise: true }
+}
+
+// Usage:
+// 1. Press Ctrl+v in normal mode
+// 2. Use motions to define rectangle
+// 3. Press operator or I/A for insert
+```
+</CodeGroup>
+
+## Visual Mode Operations
+
+Once in visual mode, you can use operators to manipulate the selection:
+
+### Common Operators
+
+- `d` - Delete selection
+- `y` - Yank (copy) selection
+- `c` - Change selection (delete and enter insert mode)
+- `>` - Indent selection right
+- `<` - Indent selection left
+- `=` - Auto-indent selection
+- `~` - Toggle case
+- `u` - Make lowercase
+- `U` - Make uppercase
+- `gq` - Format/wrap text (if defined)
+
+<Tip>
+  Most normal mode operators work in visual mode, acting on the selected text.
+</Tip>
+
+## Selection Behavior
+
+Visual mode selections are tracked in the Vim state:
+
+```typescript
+// From types.ts:
+type vimState = {
+  visualMode: boolean,     // True when in visual mode
+  visualLine: boolean,     // True for line-wise visual
+  visualBlock: boolean,    // True for block-wise visual
+  lastSelection: {         // Last visual selection
+    anchorMark: Marker,
+    headMark: Marker,
+    visualLine: boolean,
+    visualBlock: boolean,
+    visualMode: boolean,
+    anchor: Pos,
+    head: Pos,
+  },
+  // ... other properties
+}
+```
+
+## Visual Mode Examples
+
+<CodeGroup>
+```javascript Delete Lines
+// Delete 5 lines:
+// V      - Enter line-wise visual
+// 4j     - Select 5 lines total (current + 4 down)
+// d      - Delete selection
+
+// Or use count directly:
+// V5j    - Select 6 lines
+// d      - Delete
+```
+
+```javascript Change Word Case
+// Select word and make uppercase:
+// v      - Enter visual mode
+// iw     - Select inner word
+// U      - Make uppercase
+
+// Or use motion:
+// vw     - Visual select to next word
+// ~      - Toggle case
+```
+
+```javascript Block Edit
+// Add comment to multiple lines:
+// Ctrl+v - Enter block visual
+// 5j     - Select 6 lines
+// I      - Insert at start of block
+// //     - Type comment
+// Esc    - Apply to all lines
+```
+
+```javascript Indent Block
+// Indent multiple lines:
+// V      - Enter line visual
+// 3j     - Select 4 lines
+// >      - Indent right
+// .      - Repeat indent
+```
+</CodeGroup>
+
+## DrawSelection Plugin Requirement
+
+<Warning>
+  If you are **not** using `basicSetup`, you must include the `drawSelection` plugin to correctly render visual mode selections.
+</Warning>
+
+From the README:
+
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from "@replit/codemirror-vim";
+import { drawSelection } from "@codemirror/view";
+
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    vim(),
+    // If NOT using basicSetup, add drawSelection:
+    drawSelection(),
+    // ... other extensions
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+<Note>
+  The `basicSetup` bundle already includes `drawSelection`, so you only need to add it explicitly if you're building a custom extension setup.
+</Note>
+
+## Visual Mode State Tracking
+
+The vim state tracks visual mode information:
+
+```javascript
+import { getCM } from "@replit/codemirror-vim";
+
+// Get the CodeMirror adapter
+const cm = getCM(view);
+
+// Check current mode
+if (cm.state.vim.visualMode) {
+  if (cm.state.vim.visualLine) {
+    console.log('In line-wise visual mode');
+  } else if (cm.state.vim.visualBlock) {
+    console.log('In block-wise visual mode');
+  } else {
+    console.log('In character-wise visual mode');
+  }
+}
+```
+
+## Mode Change Events
+
+CodeMirror Vim fires events when entering or exiting visual mode:
+
+```javascript
+import { CodeMirror } from "@replit/codemirror-vim";
+
+const cm = getCM(view);
+
+CodeMirror.signal(cm, 'vim-mode-change', function(e) {
+  console.log('Mode:', e.mode);      // 'visual', 'normal', 'insert'
+  console.log('SubMode:', e.subMode); // 'linewise', 'blockwise', or undefined
+});
+```
+
+From the source code (index.ts:75-85):
+
+```typescript
+this.cm.on("vim-mode-change", (e: any) => {
+  if (!cm.state.vim) return;
+  cm.state.vim.mode = e.mode;
+  if (e.subMode) {
+    cm.state.vim.mode += e.subMode === "linewise" ? " line" : " block";
+  }
+  cm.state.vim.status = "";
+  this.blockCursor.scheduleRedraw();
+  this.updateClass();
+  this.updateStatus();
+});
+```
+
+## Exiting Visual Mode
+
+There are several ways to exit visual mode:
+
+- `<Esc>` - Return to normal mode
+- `v` / `V` / `<Ctrl-v>` - Toggle off the current visual mode
+- Execute an operator (automatically exits after operation)
+- `<Ctrl-c>` - Alternative to Escape
+
+## Reselecting Last Selection
+
+Use `gv` to reselect the last visual selection:
+
+```javascript
+// From defaultKeymap:
+{
+  keys: 'gv',
+  type: 'action',
+  action: 'reselectLastSelection'
+}
+
+// Usage:
+// 1. Make a visual selection and perform operation
+// 2. Press 'gv' to reselect the same area
+```
+
+## Visual Mode with Custom Operators
+
+Your custom operators automatically work in visual mode:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+Vim.defineOperator("uppercase", function(cm, operatorArgs, ranges) {
+  for (const range of ranges) {
+    const text = cm.getRange(range.anchor, range.head);
+    cm.replaceRange(text.toUpperCase(), range.anchor, range.head);
+  }
+});
+
+// Add to keymap
+defaultKeymap.push({
+  keys: 'gU',
+  type: 'operator',
+  operator: 'uppercase'
+});
+
+// Now works with visual mode:
+// v3w - Select 3 words
+// gU  - Make uppercase
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Use the Right Visual Mode">
+    - Character-wise (`v`) for word-level selections
+    - Line-wise (`V`) for line operations
+    - Block-wise (`Ctrl+v`) for column operations
+  </Step>
+
+  <Step title="Combine with Text Objects">
+    Visual mode works great with text objects:
+    ```
+    viw  - Select inner word
+    vip  - Select inner paragraph
+    vi{  - Select inside braces
+    va" - Select around quotes
+    ```
+  </Step>
+
+  <Step title="Use gv to Reselect">
+    After performing an operation, use `gv` to reselect the same area for additional operations.
+  </Step>
+</Steps>

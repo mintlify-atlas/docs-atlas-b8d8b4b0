@@ -1,0 +1,112 @@
+---
+title: "vim"
+description: "Create a Vim extension for CodeMirror 6"
+---
+
+## Function Signature
+
+```typescript
+function vim(options?: { status?: boolean }): Extension
+```
+
+Creates a CodeMirror 6 extension that enables Vim keybindings and modal editing.
+
+## Parameters
+
+<ParamField path="options" type="object" optional>
+  Configuration options for the Vim extension.
+  
+  <ParamField path="status" type="boolean" optional>
+    When `true`, displays a status bar showing the current Vim mode (NORMAL, INSERT, VISUAL, etc.). Defaults to `false`.
+  </ParamField>
+</ParamField>
+
+## Returns
+
+<ResponseField name="Extension" type="Extension">
+  A CodeMirror 6 extension that includes:
+  - Vim keybindings and modal editing
+  - Visual block cursor styling
+  - Native selection hiding in normal/visual modes
+  - Optional status bar panel
+</ResponseField>
+
+## Description
+
+The `vim()` function returns a CodeMirror 6 extension that enables Vim-style modal editing with support for normal, insert, visual, and command modes. It provides a comprehensive Vim experience including:
+
+- All standard Vim motions and operators
+- Visual mode (character, line, and block)
+- Ex commands
+- Registers and marks
+- Search with highlighting
+- Custom block cursor rendering
+
+## Usage
+
+<CodeGroup>
+
+```typescript Basic Usage
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from '@replit/codemirror-vim';
+
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    // Include vim before other keymaps
+    vim(),
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+```typescript With Status Bar
+import { EditorView } from '@codemirror/view';
+import { vim } from '@replit/codemirror-vim';
+
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    vim({ status: true }), // Enable status bar
+    // ... other extensions
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+</CodeGroup>
+
+## Important Notes
+
+<Warning>
+  The `vim()` extension should be included **before** other keymap extensions in your extensions array. This ensures that Vim keybindings take precedence in normal and visual modes, while allowing other keymaps to work in insert mode.
+</Warning>
+
+<Note>
+  If you are not using `basicSetup`, make sure to include the `drawSelection` plugin from `@codemirror/view` to correctly render selections in visual mode.
+</Note>
+
+## Extension Ordering
+
+Correct extension ordering is crucial for proper Vim functionality:
+
+```typescript
+// ✓ Correct: vim before other keymaps
+const extensions = [
+  vim(),
+  basicSetup,
+  // ... other extensions
+];
+
+// ✗ Incorrect: vim after other keymaps may cause conflicts
+const extensions = [
+  basicSetup,
+  vim(), // May not work correctly
+];
+```
+
+## See Also
+
+- [getCM()](/api/get-cm) - Access the CM5 compatibility API
+- [Vim object](/api/vim-object) - Configure Vim behavior

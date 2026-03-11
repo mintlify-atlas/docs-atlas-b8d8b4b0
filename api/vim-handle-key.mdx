@@ -1,0 +1,266 @@
+---
+title: 'Vim.handleKey()'
+description: 'Programmatically send key presses to the Vim mode handler'
+---
+
+## Overview
+
+The `Vim.handleKey()` function allows you to programmatically send key presses to the Vim mode handler, as if the user had pressed those keys. This is useful for automation, custom commands, or integrating Vim behavior with other features.
+
+## Signature
+
+```typescript
+Vim.handleKey(
+  cm: CodeMirror,
+  key: string,
+  origin?: string
+): boolean | undefined
+```
+
+## Parameters
+
+<ParamField path="cm" type="CodeMirror" required>
+  The CodeMirror editor instance. You can get this from the EditorView using `getCM(view)`.
+</ParamField>
+
+<ParamField path="key" type="string" required>
+  The key to send to the Vim handler. This can be:
+  - A single character: `"j"`, `"k"`, `"a"`, etc.
+  - A special key wrapped in angle brackets: `"<Esc>"`, `"<CR>"`, `"<Space>"`
+  - A key with modifiers: `"<C-w>"`, `"<C-o>"`, `"<S-a>"`
+  
+  Special key names include:
+  - `<Esc>` - Escape
+  - `<CR>` - Enter/Return
+  - `<Space>` - Space
+  - `<BS>` - Backspace
+  - `<Del>` - Delete
+  - `<C-x>` - Control+x
+  - `<S-x>` - Shift+x
+  - `<A-x>` - Alt+x (Meta on Mac)
+</ParamField>
+
+<ParamField path="origin" type="string">
+  The origin of the key press. Optional parameter that indicates where the key came from:
+  - `"user"` - Simulates a user keypress
+  - `"mapping"` - Key came from a mapping
+  
+  If omitted, defaults to `"user"`.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="boolean | undefined">
+  Returns:
+  - `true` if the key was handled by Vim
+  - `false` if the key was not handled
+  - `undefined` if the key resulted in no action
+</ResponseField>
+
+## Examples
+
+### Exit Insert Mode
+
+Programmatically exit insert mode:
+
+```javascript
+import { Vim, getCM } from "@replit/codemirror-vim";
+
+function exitInsertMode(view) {
+  const cm = getCM(view);
+  Vim.handleKey(cm, "<Esc>");
+}
+```
+
+### Execute a Command Sequence
+
+Execute a sequence of Vim commands:
+
+```javascript
+function deleteLineAndEnterInsert(view) {
+  const cm = getCM(view);
+  
+  // Delete current line (dd)
+  Vim.handleKey(cm, "d");
+  Vim.handleKey(cm, "d");
+  
+  // Open new line below (o)
+  Vim.handleKey(cm, "o");
+}
+```
+
+### Custom Button Integration
+
+Integrate Vim commands with UI buttons:
+
+```javascript
+function setupVimButtons(view) {
+  const cm = getCM(view);
+  
+  // Save button
+  document.getElementById('save-btn').addEventListener('click', () => {
+    Vim.handleKey(cm, ":");
+    Vim.handleKey(cm, "w");
+    Vim.handleKey(cm, "<CR>");
+  });
+  
+  // Undo button
+  document.getElementById('undo-btn').addEventListener('click', () => {
+    Vim.handleKey(cm, "u");
+  });
+  
+  // Redo button
+  document.getElementById('redo-btn').addEventListener('click', () => {
+    Vim.handleKey(cm, "<C-r>");
+  });
+}
+```
+
+### Execute Macro Programmatically
+
+Simulate recording and playing a macro:
+
+```javascript
+function executeCustomMacro(view) {
+  const cm = getCM(view);
+  const commands = [
+    "^",        // Go to first non-blank character
+    "C",        // Change to end of line
+    "TODO: ",   // Type text
+    "<Esc>"     // Exit insert mode
+  ];
+  
+  for (const cmd of commands) {
+    if (cmd.length === 1 && cmd !== " ") {
+      // Single character
+      Vim.handleKey(cm, cmd);
+    } else if (cmd.startsWith("<")) {
+      // Special key
+      Vim.handleKey(cm, cmd);
+    } else {
+      // Multiple characters - type each one
+      for (const char of cmd) {
+        Vim.handleKey(cm, char);
+      }
+    }
+  }
+}
+```
+
+### Keyboard Shortcut Handler
+
+Integrate Vim with custom keyboard shortcuts:
+
+```javascript
+function setupShortcuts(view) {
+  const cm = getCM(view);
+  
+  window.addEventListener('keydown', (e) => {
+    // Custom: Ctrl+S to save
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      Vim.handleKey(cm, ":");
+      Vim.handleKey(cm, "w");
+      Vim.handleKey(cm, "<CR>");
+    }
+    
+    // Custom: Ctrl+/ to toggle comment
+    if (e.ctrlKey && e.key === '/') {
+      e.preventDefault();
+      Vim.handleKey(cm, "g");
+      Vim.handleKey(cm, "c");
+      Vim.handleKey(cm, "c");
+    }
+  });
+}
+```
+
+### Automation Script
+
+Automate complex editing tasks:
+
+```javascript
+function formatAllFunctions(view) {
+  const cm = getCM(view);
+  
+  // Go to start of file
+  Vim.handleKey(cm, "g");
+  Vim.handleKey(cm, "g");
+  
+  // Find and format each function
+  let searching = true;
+  while (searching) {
+    // Search for 'function'
+    Vim.handleKey(cm, "/");
+    "function".split('').forEach(c => Vim.handleKey(cm, c));
+    Vim.handleKey(cm, "<CR>");
+    
+    // Format the function (assuming a 'gq' operator)
+    Vim.handleKey(cm, "g");
+    Vim.handleKey(cm, "q");
+    Vim.handleKey(cm, "i");
+    Vim.handleKey(cm, "f"); // inner function
+    
+    // Check if we've reached the end
+    const cursor = cm.getCursor();
+    if (cursor.line === cm.lastLine()) {
+      searching = false;
+    }
+  }
+}
+```
+
+### Testing Helper
+
+Use in tests to simulate user input:
+
+```javascript
+function testVimCommands() {
+  const view = createTestEditor();
+  const cm = getCM(view);
+  
+  // Type some text
+  Vim.handleKey(cm, "i");
+  "Hello World".split('').forEach(c => Vim.handleKey(cm, c));
+  Vim.handleKey(cm, "<Esc>");
+  
+  // Delete word
+  Vim.handleKey(cm, "d");
+  Vim.handleKey(cm, "w");
+  
+  // Check result
+  const text = cm.getValue();
+  assert.equal(text, "World");
+}
+```
+
+## Special Keys Reference
+
+| Key Name | Description |
+|----------|-------------|
+| `<Esc>` | Escape key |
+| `<CR>` | Enter/Return |
+| `<Space>` | Space bar |
+| `<BS>` | Backspace |
+| `<Del>` | Delete |
+| `<Tab>` | Tab |
+| `<Up>`, `<Down>`, `<Left>`, `<Right>` | Arrow keys |
+| `<C-x>` | Control + x |
+| `<S-x>` | Shift + x |
+| `<A-x>` | Alt + x (or Meta on Mac) |
+| `<M-x>` | Meta + x (same as Alt) |
+
+## Notes
+
+- Keys are processed synchronously in the order they are sent
+- Special keys must be wrapped in angle brackets (e.g., `<Esc>`, not `Esc`)
+- The function respects the current Vim mode (normal, insert, visual)
+- Multi-key sequences must be sent one key at a time
+- For regular characters in insert mode, you can send them directly without `handleKey`
+- The `origin` parameter affects how mappings are processed
+
+## See Also
+
+- [Vim.exitInsertMode()](/api/vim-exit-insert-mode) - Specifically exit insert mode
+- [Vim.map()](/api/vim-map) - Create key mappings
+- [getCM()](/api/get-cm) - Get CodeMirror instance from EditorView

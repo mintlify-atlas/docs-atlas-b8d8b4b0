@@ -1,0 +1,232 @@
+---
+title: 'Vim.defineAction()'
+description: 'Define custom actions that execute immediately in Vim mode'
+---
+
+## Overview
+
+The `Vim.defineAction()` function creates custom Vim actions. Unlike operators (which wait for a motion), actions execute immediately when their key sequence is pressed. Actions are used for commands like entering insert mode, scrolling, or other immediate effects.
+
+## Signature
+
+```typescript
+Vim.defineAction(
+  name: string,
+  callback: (cm: CodeMirror, actionArgs: ActionArgs, vim: VimState) => void
+): void
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  The name of the action. This name is used to reference the action in keymaps.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function to execute when the action is invoked. Receives:
+  
+  - `cm` (CodeMirror) - The editor instance
+  - `actionArgs` (ActionArgs) - Action arguments including:
+    - `repeat` (number) - Repeat count from the command
+    - `forward` (boolean) - Direction flag
+    - `position` (string) - Position specification
+    - `after` (boolean) - Whether to act after cursor
+    - Other action-specific arguments
+  - `vim` (VimState) - The Vim state object containing:
+    - `insertMode` (boolean) - Whether in insert mode
+    - `visualMode` (boolean) - Whether in visual mode
+    - `visualLine` (boolean) - Whether in visual line mode
+    - `visualBlock` (boolean) - Whether in visual block mode
+    - Other state properties
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Center Screen Action
+
+Define an action to center the screen on the current line:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+// Add to keymap
+Vim.mapCommand({
+  keys: 'zz',
+  type: 'action',
+  action: 'centerScreen'
+});
+
+// Define the action
+Vim.defineAction('centerScreen', function(cm, actionArgs, vim) {
+  const cursor = cm.getCursor();
+  const coords = cm.charCoords(cursor, 'local');
+  const scrollInfo = cm.getScrollInfo();
+  
+  // Calculate center position
+  const center = scrollInfo.top + (scrollInfo.clientHeight / 2);
+  const offset = coords.top - center;
+  
+  // Scroll to center
+  cm.scrollTo(null, scrollInfo.top + offset);
+});
+```
+
+### Toggle Comment Action
+
+Define an action to toggle comments on the current line:
+
+```javascript
+Vim.mapCommand({
+  keys: 'gc',
+  type: 'action',
+  action: 'toggleComment'
+});
+
+Vim.defineAction('toggleComment', function(cm, actionArgs, vim) {
+  const cursor = cm.getCursor();
+  const line = cm.getLine(cursor.line);
+  
+  if (line.trim().startsWith('//')) {
+    // Uncomment
+    const uncommented = line.replace(/^(\s*)\/\/\s?/, '$1');
+    cm.replaceRange(
+      uncommented,
+      { line: cursor.line, ch: 0 },
+      { line: cursor.line, ch: line.length }
+    );
+  } else {
+    // Comment
+    const indent = line.match(/^\s*/)[0];
+    cm.replaceRange(
+      indent + '// ' + line.slice(indent.length),
+      { line: cursor.line, ch: 0 },
+      { line: cursor.line, ch: line.length }
+    );
+  }
+});
+```
+
+### Save File Action
+
+Define an action to save the current file:
+
+```javascript
+Vim.mapCommand({
+  keys: '<C-s>',
+  type: 'action',
+  action: 'saveFile',
+  context: 'insert'
+});
+
+Vim.defineAction('saveFile', function(cm, actionArgs, vim) {
+  // Call your save function
+  const content = cm.getValue();
+  saveToServer(content)
+    .then(() => {
+      cm.openNotification('File saved!', { duration: 2000 });
+    })
+    .catch(err => {
+      cm.openNotification('Save failed: ' + err.message, { duration: 3000 });
+    });
+});
+```
+
+### Duplicate Line Action
+
+Define an action to duplicate the current line:
+
+```javascript
+Vim.mapCommand({
+  keys: 'yd',
+  type: 'action',
+  action: 'duplicateLine'
+});
+
+Vim.defineAction('duplicateLine', function(cm, actionArgs, vim) {
+  const cursor = cm.getCursor();
+  const line = cm.getLine(cursor.line);
+  const repeat = actionArgs.repeat || 1;
+  
+  // Duplicate the line
+  const duplicated = Array(repeat).fill('\n' + line).join('');
+  cm.replaceRange(
+    duplicated,
+    { line: cursor.line, ch: cm.getLine(cursor.line).length }
+  );
+  
+  // Move cursor to last duplicated line
+  cm.setCursor(cursor.line + repeat, cursor.ch);
+});
+
+// Usage: yd (duplicate once), 3yd (duplicate 3 times)
+```
+
+### Jump to Definition Action
+
+Define an action to jump to a symbol definition:
+
+```javascript
+Vim.mapCommand({
+  keys: 'gd',
+  type: 'action',
+  action: 'jumpToDefinition'
+});
+
+Vim.defineAction('jumpToDefinition', function(cm, actionArgs, vim) {
+  const cursor = cm.getCursor();
+  const token = cm.getTokenAt(cursor);
+  
+  // Use your language server or definition finder
+  findDefinition(token.string).then(location => {
+    if (location) {
+      cm.setCursor(location.line, location.ch);
+      cm.scrollIntoView({ line: location.line, ch: location.ch }, 100);
+    } else {
+      cm.openNotification('Definition not found');
+    }
+  });
+});
+```
+
+## Usage
+
+Actions execute immediately when their key sequence is pressed:
+
+- **Normal mode**: Press the mapped keys (e.g., `zz`)
+- **With repeat count**: Prefix with a count (e.g., `3zz`)
+- **In different contexts**: Map to different modes using the `context` parameter
+
+## Notes
+
+- Actions must be added to the keymap using `Vim.mapCommand()` before they can be used
+- Actions execute immediately, unlike operators which wait for a motion
+- The `actionArgs.repeat` contains the count prefixed before the action (e.g., `5` in `5zz`)
+- Actions can modify `vim` state to switch modes or update internal state
+- Use actions for immediate effects; use operators for text transformations with motions
+
+## ActionArgs Interface
+
+```typescript
+interface ActionArgs {
+  repeat: number;           // Repeat count
+  forward?: boolean;        // Direction flag
+  position?: string;        // Position specification
+  after?: boolean;          // Whether to act after
+  linewise?: boolean;       // Linewise operation
+  blockwise?: boolean;      // Blockwise operation
+  insertAt?: string;        // Insert position
+  // Additional action-specific properties
+}
+```
+
+## See Also
+
+- [Vim.defineOperator()](/api/vim-define-operator) - Define custom operators
+- [Vim.defineMotion()](/api/vim-define-motion) - Define custom motions
+- [Vim.mapCommand()](/api/vim-map-command) - Add commands to keymap

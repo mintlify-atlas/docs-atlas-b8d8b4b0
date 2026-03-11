@@ -1,0 +1,301 @@
+---
+title: 'Vim.defineMotion()'
+description: 'Define custom motions for cursor movement in Vim mode'
+---
+
+## Overview
+
+The `Vim.defineMotion()` function creates custom Vim motions. Motions are commands that move the cursor and can be combined with operators. For example, in `dw` (delete word), `w` is the motion.
+
+## Signature
+
+```typescript
+Vim.defineMotion(
+  name: string,
+  callback: (
+    cm: CodeMirror,
+    head: Pos,
+    motionArgs: MotionArgs,
+    vim: VimState,
+    inputState: InputState
+  ) => Pos | [Pos, Pos] | null | undefined
+): void
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  The name of the motion. This name is used to reference the motion in keymaps.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function that performs the cursor movement. Receives:
+  
+  - `cm` (CodeMirror) - The editor instance
+  - `head` (Pos) - Current cursor position with properties:
+    - `line` (number) - Line number (0-indexed)
+    - `ch` (number) - Character position (0-indexed)
+  - `motionArgs` (MotionArgs) - Motion arguments including:
+    - `repeat` (number) - Repeat count
+    - `forward` (boolean) - Direction of motion
+    - `linewise` (boolean) - Whether motion is linewise
+    - `inclusive` (boolean) - Whether motion includes end position
+  - `vim` (VimState) - The Vim state object
+  - `inputState` (InputState) - Current input state
+  
+  Should return:
+  - `Pos` - New cursor position
+  - `[Pos, Pos]` - Selection range (for visual selections)
+  - `null` or `undefined` - No movement
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Jump to Next Function
+
+Define a motion to jump to the next function definition:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+// Add to keymap
+Vim.mapCommand({
+  keys: ']f',
+  type: 'motion',
+  motion: 'jumpToNextFunction',
+  motionArgs: { forward: true }
+});
+
+Vim.mapCommand({
+  keys: '[f',
+  type: 'motion',
+  motion: 'jumpToNextFunction',
+  motionArgs: { forward: false }
+});
+
+// Define the motion
+Vim.defineMotion('jumpToNextFunction', function(cm, head, motionArgs) {
+  const forward = motionArgs.forward;
+  const repeat = motionArgs.repeat || 1;
+  const functionRegex = /^\s*function\s+\w+|^\s*const\s+\w+\s*=\s*(?:function|\()/;
+  
+  let line = head.line;
+  let found = 0;
+  
+  // Search for function definitions
+  while (forward ? line < cm.lastLine() : line > cm.firstLine()) {
+    line += forward ? 1 : -1;
+    const text = cm.getLine(line);
+    
+    if (functionRegex.test(text)) {
+      found++;
+      if (found === repeat) {
+        return { line: line, ch: 0 };
+      }
+    }
+  }
+  
+  // No function found, return current position
+  return head;
+});
+```
+
+### Jump to Matching Bracket
+
+Define a motion to jump to the matching bracket:
+
+```javascript
+Vim.mapCommand({
+  keys: 'gm',
+  type: 'motion',
+  motion: 'jumpToMatchingBracket'
+});
+
+Vim.defineMotion('jumpToMatchingBracket', function(cm, head, motionArgs) {
+  const cursor = { line: head.line, ch: head.ch };
+  const matchingBracket = cm.findMatchingBracket(cursor);
+  
+  if (matchingBracket && matchingBracket.to) {
+    return matchingBracket.to;
+  }
+  
+  return head;
+});
+```
+
+### Jump to Next Blank Line
+
+Define a motion to jump to the next blank line:
+
+```javascript
+Vim.mapCommand({
+  keys: ']b',
+  type: 'motion',
+  motion: 'jumpToBlankLine',
+  motionArgs: { forward: true }
+});
+
+Vim.mapCommand({
+  keys: '[b',
+  type: 'motion',
+  motion: 'jumpToBlankLine',
+  motionArgs: { forward: false }
+});
+
+Vim.defineMotion('jumpToBlankLine', function(cm, head, motionArgs) {
+  const forward = motionArgs.forward;
+  const repeat = motionArgs.repeat || 1;
+  let line = head.line;
+  let found = 0;
+  
+  while (forward ? line < cm.lastLine() : line > cm.firstLine()) {
+    line += forward ? 1 : -1;
+    const text = cm.getLine(line);
+    
+    if (text.trim() === '') {
+      found++;
+      if (found === repeat) {
+        return { line: line, ch: 0 };
+      }
+    }
+  }
+  
+  return head;
+});
+```
+
+### Jump by Indentation Level
+
+Define a motion to jump to the next line with the same indentation:
+
+```javascript
+Vim.mapCommand({
+  keys: ']i',
+  type: 'motion',
+  motion: 'jumpToSameIndent',
+  motionArgs: { forward: true }
+});
+
+Vim.defineMotion('jumpToSameIndent', function(cm, head, motionArgs) {
+  const currentLine = cm.getLine(head.line);
+  const currentIndent = currentLine.match(/^\s*/)[0].length;
+  const forward = motionArgs.forward;
+  let line = head.line;
+  
+  while (forward ? line < cm.lastLine() : line > cm.firstLine()) {
+    line += forward ? 1 : -1;
+    const text = cm.getLine(line);
+    const indent = text.match(/^\s*/)[0].length;
+    
+    if (text.trim() && indent === currentIndent) {
+      return { line: line, ch: indent };
+    }
+  }
+  
+  return head;
+});
+```
+
+### Text Object Motion
+
+Define a motion that returns a range for a text object:
+
+```javascript
+Vim.mapCommand({
+  keys: 'af',
+  type: 'motion',
+  motion: 'aroundFunction',
+  motionArgs: { textObjectInner: false }
+});
+
+Vim.defineMotion('aroundFunction', function(cm, head, motionArgs) {
+  // Find the start and end of the current function
+  const functionStart = findFunctionStart(cm, head.line);
+  const functionEnd = findFunctionEnd(cm, head.line);
+  
+  if (functionStart !== null && functionEnd !== null) {
+    // Return a range [start, end]
+    return [
+      { line: functionStart, ch: 0 },
+      { line: functionEnd, ch: cm.getLine(functionEnd).length }
+    ];
+  }
+  
+  return head;
+});
+
+function findFunctionStart(cm, line) {
+  const regex = /^\s*function\s+\w+/;
+  while (line >= cm.firstLine()) {
+    if (regex.test(cm.getLine(line))) return line;
+    line--;
+  }
+  return null;
+}
+
+function findFunctionEnd(cm, line) {
+  // Simplified: find the matching closing brace
+  // In practice, you'd need proper brace matching
+  let depth = 0;
+  while (line <= cm.lastLine()) {
+    const text = cm.getLine(line);
+    for (const char of text) {
+      if (char === '{') depth++;
+      if (char === '}') depth--;
+      if (depth === 0 && text.includes('}')) return line;
+    }
+    line++;
+  }
+  return null;
+}
+```
+
+## Usage
+
+After defining a motion, you can use it:
+
+- **By itself**: Move the cursor (e.g., `]f` to jump to next function)
+- **With operators**: Combine with operators (e.g., `d]f` to delete to next function)
+- **With counts**: Prefix with a count (e.g., `3]f` to jump 3 functions forward)
+- **In visual mode**: Extend selection using the motion
+
+## Return Values
+
+- **Single `Pos`**: Moves cursor to that position
+- **`[Pos, Pos]`**: Creates a selection from first to second position (useful for text objects)
+- **`null` or `undefined`**: No movement (motion failed)
+
+## Notes
+
+- Motions must be added to the keymap using `Vim.mapCommand()` before they can be used
+- The `motionArgs.repeat` contains the count prefixed before the motion
+- Set `motionArgs.linewise = true` for line-based motions
+- Set `motionArgs.inclusive = true` to include the end position in operations
+- Motions work with all built-in operators (`d`, `c`, `y`, etc.)
+
+## MotionArgs Interface
+
+```typescript
+interface MotionArgs {
+  repeat: number;           // Repeat count
+  forward?: boolean;        // Direction of motion
+  linewise?: boolean;       // Linewise motion
+  inclusive?: boolean;      // Include end position
+  wordEnd?: boolean;        // Move to word end
+  bigWord?: boolean;        // Use WORD instead of word
+  textObjectInner?: boolean; // Inner text object
+  toJumplist?: boolean;     // Add to jump list
+}
+```
+
+## See Also
+
+- [Vim.defineOperator()](/api/vim-define-operator) - Define custom operators
+- [Vim.defineAction()](/api/vim-define-action) - Define custom actions
+- [Vim.mapCommand()](/api/vim-map-command) - Add commands to keymap

@@ -1,0 +1,292 @@
+---
+title: 'Vim.exitInsertMode()'
+description: 'Exit insert mode and return to normal mode'
+---
+
+## Overview
+
+The `Vim.exitInsertMode()` function programmatically exits insert mode and returns to normal mode. This is equivalent to pressing `<Esc>` in insert mode, but provides a direct API for mode switching.
+
+## Signature
+
+```typescript
+Vim.exitInsertMode(cm: CodeMirror): void
+```
+
+## Parameters
+
+<ParamField path="cm" type="CodeMirror" required>
+  The CodeMirror editor instance. You can get this from the EditorView using `getCM(view)`.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+Exit insert mode after a timeout:
+
+```javascript
+import { Vim, getCM } from "@replit/codemirror-vim";
+
+function autoExitInsertMode(view, delay = 5000) {
+  const cm = getCM(view);
+  
+  // Set a timeout to exit insert mode after inactivity
+  let timeout;
+  
+  cm.on('vim-mode-change', (e) => {
+    if (e.mode === 'insert') {
+      timeout = setTimeout(() => {
+        Vim.exitInsertMode(cm);
+      }, delay);
+    } else {
+      clearTimeout(timeout);
+    }
+  });
+}
+```
+
+### Integration with Save
+
+Exit insert mode when saving:
+
+```javascript
+function saveFile(view) {
+  const cm = getCM(view);
+  
+  // Exit insert mode before saving
+  if (cm.state.vim?.insertMode) {
+    Vim.exitInsertMode(cm);
+  }
+  
+  // Save the file
+  const content = cm.getValue();
+  saveToServer(content);
+}
+```
+
+### Auto-Format on Exit
+
+Automatically format code when exiting insert mode:
+
+```javascript
+function setupAutoFormat(view) {
+  const cm = getCM(view);
+  
+  // Store original exitInsertMode
+  const originalExit = Vim.exitInsertMode;
+  
+  // Override to add formatting
+  Vim.exitInsertMode = function(cm) {
+    // Format the current line
+    const cursor = cm.getCursor();
+    const line = cm.getLine(cursor.line);
+    const formatted = formatLine(line);
+    
+    if (formatted !== line) {
+      cm.replaceRange(
+        formatted,
+        { line: cursor.line, ch: 0 },
+        { line: cursor.line, ch: line.length }
+      );
+    }
+    
+    // Call original exit
+    originalExit.call(this, cm);
+  };
+}
+
+function formatLine(line) {
+  // Simple formatting example
+  return line.trim();
+}
+```
+
+### Command Palette Integration
+
+Add a command to exit insert mode:
+
+```javascript
+function registerCommands(view) {
+  const cm = getCM(view);
+  
+  const commands = [
+    {
+      name: 'Vim: Exit Insert Mode',
+      execute: () => {
+        if (cm.state.vim?.insertMode) {
+          Vim.exitInsertMode(cm);
+        }
+      },
+      when: () => cm.state.vim?.insertMode === true
+    },
+    {
+      name: 'Vim: Enter Insert Mode',
+      execute: () => {
+        if (!cm.state.vim?.insertMode) {
+          Vim.handleKey(cm, 'i');
+        }
+      },
+      when: () => cm.state.vim?.insertMode === false
+    }
+  ];
+  
+  return commands;
+}
+```
+
+### Auto-Save on Mode Change
+
+Automatically save when exiting insert mode:
+
+```javascript
+function setupAutoSave(view) {
+  const cm = getCM(view);
+  let insertModeChanges = false;
+  
+  cm.on('change', () => {
+    if (cm.state.vim?.insertMode) {
+      insertModeChanges = true;
+    }
+  });
+  
+  cm.on('vim-mode-change', (e) => {
+    // When exiting insert mode
+    if (e.mode === 'normal' && insertModeChanges) {
+      saveFile(cm.getValue());
+      insertModeChanges = false;
+    }
+  });
+}
+```
+
+### Completion Integration
+
+Exit insert mode after accepting a completion:
+
+```javascript
+function setupCompletion(view) {
+  const cm = getCM(view);
+  
+  cm.on('completion-selected', (completion) => {
+    // Insert the completion
+    cm.replaceRange(
+      completion.text,
+      cm.getCursor()
+    );
+    
+    // Exit insert mode
+    setTimeout(() => {
+      Vim.exitInsertMode(cm);
+    }, 0);
+  });
+}
+```
+
+### Collaborative Editing
+
+Exit insert mode when another user starts editing:
+
+```javascript
+function setupCollaboration(view) {
+  const cm = getCM(view);
+  
+  // When remote user starts editing near cursor
+  socket.on('remote-edit', (edit) => {
+    const cursor = cm.getCursor();
+    const distance = Math.abs(cursor.line - edit.line);
+    
+    // If edit is close to cursor, exit insert mode
+    if (distance < 3 && cm.state.vim?.insertMode) {
+      Vim.exitInsertMode(cm);
+      showNotification('User ' + edit.user + ' is editing nearby');
+    }
+  });
+}
+```
+
+### Mode Indicator
+
+Update UI when mode changes:
+
+```javascript
+function setupModeIndicator(view) {
+  const cm = getCM(view);
+  const indicator = document.getElementById('mode-indicator');
+  
+  cm.on('vim-mode-change', (e) => {
+    indicator.textContent = e.mode.toUpperCase();
+    indicator.className = `mode-${e.mode}`;
+  });
+  
+  // Add button to exit insert mode
+  const exitButton = document.getElementById('exit-insert');
+  exitButton.addEventListener('click', () => {
+    if (cm.state.vim?.insertMode) {
+      Vim.exitInsertMode(cm);
+    }
+  });
+}
+```
+
+## Behavior
+
+When `exitInsertMode()` is called:
+
+1. The editor switches from insert mode to normal mode
+2. The cursor moves one character to the left (unless at the start of the line)
+3. Any pending insert mode changes are finalized
+4. A `'vim-mode-change'` event is fired with `{mode: 'normal'}`
+5. The visual cursor changes from a line to a block
+
+## Notes
+
+- This function only has an effect if the editor is currently in insert mode
+- If already in normal mode, calling this function has no effect
+- This is equivalent to pressing `<Esc>` but does not trigger any `<Esc>` key mappings
+- The cursor position after exiting is adjusted to be on a valid character
+- Any unsaved changes in insert mode are preserved
+
+## Checking Current Mode
+
+You can check if the editor is in insert mode before calling:
+
+```javascript
+const cm = getCM(view);
+
+if (cm.state.vim?.insertMode) {
+  Vim.exitInsertMode(cm);
+  console.log('Exited insert mode');
+} else {
+  console.log('Not in insert mode');
+}
+```
+
+## Events
+
+Listen for mode changes:
+
+```javascript
+cm.on('vim-mode-change', (event) => {
+  console.log('Mode changed to:', event.mode);
+  // event.mode can be: 'normal', 'insert', 'visual', 'replace'
+  
+  if (event.subMode) {
+    console.log('SubMode:', event.subMode);
+    // event.subMode can be: 'linewise', 'blockwise'
+  }
+});
+```
+
+## See Also
+
+- [Vim.handleKey()](/api/vim-handle-key) - Send key presses to Vim handler
+- [Vim.exitVisualMode()](/api/vim-exit-visual-mode) - Exit visual mode
+- [vim() extension](/api/vim) - Main Vim mode extension
+- [getCM()](/api/get-cm) - Get CodeMirror instance from EditorView

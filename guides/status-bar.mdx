@@ -1,0 +1,383 @@
+---
+title: 'Status Bar'
+description: 'Display and customize the Vim status bar in CodeMirror'
+icon: 'display'
+---
+
+## Overview
+
+CodeMirror Vim includes a status bar feature that displays the current Vim mode and other status information. This helps users understand which mode they're in and provides visual feedback during command execution.
+
+## Enabling the Status Bar
+
+Enable the status bar by passing the `status` option to the `vim()` function:
+
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from "@replit/codemirror-vim";
+
+let view = new EditorView({
+  doc: "Hello, Vim!",
+  extensions: [
+    vim({ status: true }), // Enable status bar
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+<Note>
+  The status bar appears at the bottom of the editor and shows the current mode and command state.
+</Note>
+
+## Status Bar Options
+
+The vim extension accepts an options object:
+
+```typescript
+function vim(options: { status?: boolean } = {}): Extension
+```
+
+**Options:**
+- `status` - Set to `true` to display the status bar (default: `false`)
+
+From the source code (index.ts:437-444):
+
+```typescript
+export function vim(options: { status?: boolean } = {}): Extension {
+  return [
+    vimStyle,
+    vimPlugin,
+    hideNativeSelection,
+    options.status ? showPanel.of(statusPanel) : vimPanelState,
+  ];
+}
+```
+
+## Status Bar Display
+
+The status bar shows:
+
+1. **Current Mode** - Displayed in uppercase (e.g., `--NORMAL--`, `--INSERT--`, `--VISUAL--`)
+2. **Mode Modifier** - Additional mode information (e.g., `(C-O)` for one normal command)
+3. **Command Status** - Current command being typed or status messages
+
+### Mode Display Examples
+
+- `--NORMAL--` - Normal mode
+- `--INSERT--` - Insert mode
+- `--VISUAL--` - Visual character mode
+- `--VISUAL LINE--` - Visual line mode
+- `--VISUAL BLOCK--` - Visual block mode
+- `--INSERT--(C-O)` - Insert mode, one normal command pending
+
+## Status Bar Implementation
+
+From the source code (index.ts:147-168), the status is updated based on Vim state:
+
+```typescript
+updateStatus() {
+  let dom = this.cm.state.statusbar;
+  let vim = this.cm.state.vim;
+  if (!dom || !vim) return;
+  let dialog = this.cm.state.dialog;
+  if (dialog) {
+    if (dialog.parentElement != dom) {
+      dom.textContent = "";
+      dom.appendChild(dialog);
+    }
+  } else {
+    dom.textContent = ""
+    var status = (vim.mode || "normal").toUpperCase();
+    if (vim.insertModeReturn) status += "(C-O)"
+    this.statusButton.textContent = `--${status}--`;
+    dom.appendChild(this.statusButton);
+    dom.appendChild(this.spacer);
+  }
+
+  this.dom.textContent = vim.status;
+  dom.appendChild(this.dom);
+}
+```
+
+## Mode Change Events
+
+The status bar automatically updates when the mode changes. You can listen to mode change events:
+
+```javascript
+import { CodeMirror } from "@replit/codemirror-vim";
+import { getCM } from "@replit/codemirror-vim";
+
+const cm = getCM(view);
+
+CodeMirror.signal(cm, 'vim-mode-change', function(event) {
+  console.log('Mode changed to:', event.mode);
+  if (event.subMode) {
+    console.log('SubMode:', event.subMode); // 'linewise' or 'blockwise'
+  }
+});
+```
+
+From the source (index.ts:75-85):
+
+```typescript
+this.cm.on("vim-mode-change", (e: any) => {
+  if (!cm.state.vim) return;
+  cm.state.vim.mode = e.mode;
+  if (e.subMode) {
+    cm.state.vim.mode += e.subMode === "linewise" ? " line" : " block";
+  }
+  cm.state.vim.status = "";
+  this.blockCursor.scheduleRedraw();
+  this.updateClass();
+  this.updateStatus();
+});
+```
+
+## Customizing Status Display
+
+You can customize the status bar appearance using CSS:
+
+```css
+/* Style the status bar panel */
+.cm-vim-panel {
+  padding: 4px 10px;
+  background-color: #f0f0f0;
+  border-top: 1px solid #ccc;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* Style in dark mode */
+.cm-editor.cm-focused .cm-vim-panel {
+  background-color: #2d2d2d;
+  border-top-color: #555;
+  color: #fff;
+}
+
+/* Style the mode button */
+.cm-vim-panel span {
+  font-weight: bold;
+}
+```
+
+Default styles from the source (index.ts:29-44):
+
+```typescript
+const vimStyle = EditorView.baseTheme({
+  ".cm-vim-panel": {
+    padding: "0px 10px",
+    fontFamily: "monospace",
+    minHeight: "1.3em",
+    display: 'flex',
+  },
+  ".cm-vim-panel input": {
+    border: "none",
+    outline: "none",
+    backgroundColor: "inherit",
+  },
+
+  "&light .cm-searchMatch": { backgroundColor: "#ffff0054" },
+  "&dark .cm-searchMatch": { backgroundColor: "#00ffff8a" },
+});
+```
+
+## Status Panel Function
+
+The status panel is created when the status option is enabled (index.ts:428-435):
+
+```typescript
+function statusPanel(view: EditorView): Panel {
+  let dom = document.createElement("div");
+  dom.className = "cm-vim-panel";
+  let cm = (view as EditorViewExtended).cm;
+  cm.state.statusbar = dom;
+  cm.state.vimPlugin.updateStatus();
+  return { dom };
+}
+```
+
+## Accessing Status Programmatically
+
+You can access the current Vim status through the state:
+
+```javascript
+import { getCM } from "@replit/codemirror-vim";
+
+const cm = getCM(view);
+
+// Get current mode
+const mode = cm.state.vim?.mode || 'normal';
+console.log('Current mode:', mode);
+
+// Get current status message
+const status = cm.state.vim?.status || '';
+console.log('Status:', status);
+
+// Check if in insert mode
+const isInsert = cm.state.vim?.insertMode;
+
+// Check if in visual mode
+const isVisual = cm.state.vim?.visualMode;
+```
+
+## Status Messages
+
+The `vim.status` field displays temporary command information:
+
+```typescript
+// From types.ts:
+type vimState = {
+  status: string,  // Current status message
+  // ... other fields
+}
+```
+
+This is used to show:
+- Keys being typed for multi-key commands (e.g., `d` when entering `dw`)
+- Search patterns
+- Ex command input
+- Error messages
+
+## Complete Example
+
+<CodeGroup>
+```javascript With Status Bar
+import { basicSetup, EditorView } from 'codemirror';
+import { vim, Vim, getCM } from "@replit/codemirror-vim";
+
+let view = new EditorView({
+  doc: `function hello() {
+  console.log("Hello, Vim!");
+}`,
+  extensions: [
+    vim({ status: true }),
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+
+const cm = getCM(view);
+
+// Listen to mode changes
+cm.on('vim-mode-change', (e) => {
+  console.log(`Mode: ${e.mode}`);
+  if (e.subMode) {
+    console.log(`SubMode: ${e.subMode}`);
+  }
+});
+```
+
+```javascript Without Status Bar
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from "@replit/codemirror-vim";
+
+let view = new EditorView({
+  doc: "Hello, Vim!",
+  extensions: [
+    vim(), // Status bar disabled by default
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+```javascript Custom Mode Indicator
+import { basicSetup, EditorView } from 'codemirror';
+import { vim, getCM, CodeMirror } from "@replit/codemirror-vim";
+
+let view = new EditorView({
+  doc: "Hello, Vim!",
+  extensions: [vim({ status: true }), basicSetup],
+  parent: document.querySelector('#editor'),
+});
+
+// Create custom mode indicator
+const indicator = document.getElementById('mode-indicator');
+const cm = getCM(view);
+
+CodeMirror.signal(cm, 'vim-mode-change', (e) => {
+  let modeText = e.mode.toUpperCase();
+  if (e.subMode) {
+    modeText += ` ${e.subMode.toUpperCase()}`;
+  }
+  indicator.textContent = modeText;
+  
+  // Add color coding
+  indicator.className = 'mode-' + e.mode;
+});
+```
+</CodeGroup>
+
+## Styling Examples
+
+<CodeGroup>
+```css Light Theme
+.cm-vim-panel {
+  padding: 6px 12px;
+  background: linear-gradient(to bottom, #f9f9f9, #f0f0f0);
+  border-top: 1px solid #d0d0d0;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: #333;
+}
+
+.cm-vim-panel span {
+  font-weight: 600;
+  color: #0066cc;
+}
+```
+
+```css Dark Theme
+.cm-editor.cm-focused .cm-vim-panel {
+  padding: 6px 12px;
+  background: linear-gradient(to bottom, #2a2a2a, #1e1e1e);
+  border-top: 1px solid #404040;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.3);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: #d4d4d4;
+}
+
+.cm-editor.cm-focused .cm-vim-panel span {
+  font-weight: 600;
+  color: #4fc3f7;
+}
+```
+
+```css Minimal Style
+.cm-vim-panel {
+  padding: 4px 8px;
+  background: transparent;
+  border-top: 1px solid #e0e0e0;
+  font-family: monospace;
+  font-size: 11px;
+  color: #666;
+}
+```
+</CodeGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Always Enable for New Users">
+    New Vim users benefit greatly from seeing the current mode. Enable the status bar in beginner-friendly applications:
+
+    ```javascript
+    vim({ status: true })
+    ```
+  </Step>
+
+  <Step title="Consider Custom Indicators">
+    For advanced UIs, you might want to create your own mode indicator outside the editor using mode change events.
+  </Step>
+
+  <Step title="Style Consistently">
+    Match your status bar styling to your application's design system for a cohesive look.
+  </Step>
+</Steps>
+
+<Tip>
+  The status bar is especially helpful when learning Vim, as it provides immediate visual feedback about the current mode.
+</Tip>

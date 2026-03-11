@@ -1,0 +1,146 @@
+---
+title: "getCM"
+description: "Get the CodeMirror 5 compatibility adapter from an EditorView"
+---
+
+## Function Signature
+
+```typescript
+function getCM(view: EditorView): CodeMirror | null
+```
+
+Retrieves the CodeMirror 5 compatibility adapter instance from a CodeMirror 6 EditorView.
+
+## Parameters
+
+<ParamField path="view" type="EditorView" required>
+  The CodeMirror 6 EditorView instance from which to retrieve the CM5 adapter.
+</ParamField>
+
+## Returns
+
+<ResponseField name="CodeMirror" type="CodeMirror | null">
+  Returns the CodeMirror 5 compatibility adapter if the Vim extension is active, or `null` if the view doesn't have the Vim extension enabled.
+</ResponseField>
+
+## Description
+
+The `getCM()` function provides access to the CodeMirror 5 compatibility layer that powers the Vim extension. This adapter allows you to use the familiar CM5 Vim API from CodeMirror 5 with CodeMirror 6 editors.
+
+The returned `CodeMirror` object provides the same API that was available in CodeMirror 5's Vim extension, enabling you to:
+
+- Execute Vim commands programmatically
+- Configure Vim settings
+- Define custom Ex commands
+- Map and unmap keys
+- Access the Vim state
+
+## Usage
+
+<CodeGroup>
+
+```typescript Basic Usage
+import { EditorView } from '@codemirror/view';
+import { vim, getCM, Vim } from '@replit/codemirror-vim';
+
+const view = new EditorView({
+  extensions: [vim()],
+  // ... other options
+});
+
+// Get the CM5 adapter
+const cm = getCM(view);
+
+if (cm) {
+  // Use the CM5 API
+  Vim.exitInsertMode(cm);
+  Vim.handleKey(cm, "<Esc>");
+}
+```
+
+```typescript Custom Ex Commands
+import { getCM, Vim } from '@replit/codemirror-vim';
+
+const cm = getCM(view);
+
+if (cm) {
+  // Define a custom Ex command
+  Vim.defineEx('write', 'w', function() {
+    // Save the file
+    console.log('Saving file...');
+  });
+}
+```
+
+```typescript Key Mapping
+import { getCM, Vim } from '@replit/codemirror-vim';
+
+const cm = getCM(view);
+
+if (cm) {
+  // Map "jj" to Escape in insert mode
+  Vim.map("jj", "<Esc>", "insert");
+  
+  // Map "Y" to "y$" in normal mode
+  Vim.map("Y", "y$");
+}
+```
+
+</CodeGroup>
+
+## When to Use
+
+Use `getCM()` when you need to:
+
+1. **Migrate from CM5**: Port existing CM5 Vim configuration code to CM6
+2. **Programmatic Control**: Execute Vim commands or change modes programmatically
+3. **Custom Configuration**: Define custom Ex commands, operators, or key mappings
+4. **Access Vim State**: Read or modify the internal Vim state
+
+## Important Notes
+
+<Warning>
+  The `getCM()` function returns `null` if called on an EditorView that doesn't have the Vim extension enabled. Always check for `null` before using the returned value.
+</Warning>
+
+<Note>
+  The CodeMirror 5 API returned by `getCM()` is a compatibility layer. While it provides the same interface as CM5, it operates on a CM6 editor under the hood.
+</Note>
+
+## Example: Complete Integration
+
+```typescript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim, getCM, Vim } from '@replit/codemirror-vim';
+
+const view = new EditorView({
+  doc: "",
+  extensions: [
+    vim(),
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+
+// Get the CM5 adapter
+const cm = getCM(view);
+
+if (cm) {
+  // Configure Vim
+  Vim.defineEx('write', 'w', () => {
+    // Implement save functionality
+  });
+  
+  // Map keys
+  Vim.map("jj", "<Esc>", "insert");
+  
+  // Programmatically control Vim
+  Vim.exitInsertMode(cm);
+}
+```
+
+## See Also
+
+- [vim()](/api/vim) - Create the Vim extension
+- [Vim object](/api/vim-object) - Configure Vim behavior
+- [CodeMirror 5 Vim API](https://codemirror.net/5/doc/manual.html#vimapi) - Original CM5 documentation

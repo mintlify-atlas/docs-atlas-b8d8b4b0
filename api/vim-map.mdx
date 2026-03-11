@@ -1,0 +1,81 @@
+---
+title: 'Vim.map()'
+description: 'Map key sequences to other keys or commands in Vim mode'
+---
+
+## Overview
+
+The `Vim.map()` function creates custom key mappings in CodeMirror Vim mode. You can map key sequences to other key sequences, allowing you to customize your Vim keybindings.
+
+## Signature
+
+```typescript
+Vim.map(lhs: string, rhs: string, context?: string): void
+```
+
+## Parameters
+
+<ParamField path="lhs" type="string" required>
+  The left-hand side: the key sequence to map from. This is the key combination you'll press.
+</ParamField>
+
+<ParamField path="rhs" type="string" required>
+  The right-hand side: the key sequence to map to. This is what will be executed when you press the `lhs` keys.
+</ParamField>
+
+<ParamField path="context" type="string">
+  The mode context where this mapping applies. Valid values:
+  - `"insert"` - Mapping only works in insert mode
+  - `"normal"` - Mapping only works in normal mode (default)
+  - `"visual"` - Mapping only works in visual mode
+  
+  If omitted, the mapping applies to normal mode.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Map in Insert Mode
+
+Map `jj` to `<Esc>` to exit insert mode:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+Vim.map("jj", "<Esc>", "insert");
+```
+
+### Map in Normal Mode
+
+Map `Y` to `y$` to yank to end of line:
+
+```javascript
+Vim.map("Y", "y$");
+```
+
+### Complex Mapping
+
+Map a key sequence to multiple commands:
+
+```javascript
+// Map 'Q' to close all folds
+Vim.map("Q", "zM");
+```
+
+## Notes
+
+- Key mappings are global and persist across all editor instances
+- Special keys should be wrapped in angle brackets (e.g., `<Esc>`, `<CR>`, `<Space>`)
+- Mappings defined with `map()` are recursive, meaning the `rhs` can trigger other mappings
+- Use `Vim.noremap()` if you want non-recursive mappings
+- To remove a mapping, use [`Vim.unmap()`](/api/vim-unmap)
+
+## See Also
+
+- [Vim.unmap()](/api/vim-unmap) - Remove key mappings
+- [Vim.noremap()](/api/vim-noremap) - Create non-recursive mappings

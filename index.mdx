@@ -1,97 +1,96 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "CodeMirror Vim"
+description: "Powerful Vim keybindings for CodeMirror 6"
 ---
 
-## Setting up
+<div className="mb-8">
+  <h1 className="text-5xl font-bold mb-4" style={{color: "#cb0404"}}>
+    Vim Keybindings for CodeMirror 6
+  </h1>
+  <p className="text-xl text-gray-600">
+    Bring the power and efficiency of Vim to your CodeMirror 6 editor with full support for normal, visual, and insert modes.
+  </p>
+</div>
 
-Get your documentation site up and running in minutes.
+## Quick Start
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+Get up and running with Vim keybindings in minutes.
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the package and add it to your CodeMirror setup
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first Vim-enabled editor
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Key Features
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Complete Vim Experience" icon="keyboard">
+    Full support for normal, visual, and insert modes with authentic Vim behavior
+  </Card>
+  <Card title="Custom Key Mappings" icon="code">
+    Map custom keys and define your own Vim commands
+  </Card>
+  <Card title="Ex Commands" icon="terminal">
+    Support for Vim ex commands with extensibility
+  </Card>
+  <Card title="Visual Mode" icon="eye">
+    Visual block and line selection with all standard Vim operations
+  </Card>
+  <Card title="Status Bar" icon="window">
+    Optional status bar showing current mode and command state
+  </Card>
+  <Card title="CM5 Compatible" icon="arrows-rotate">
+    Drop-in compatibility layer for CodeMirror 5 Vim API
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Explore the Documentation
 
-## Need inspiration?
+<CardGroup cols={2}>
+  <Card title="Key Mappings" icon="map" href="/guides/key-mappings">
+    Learn how to customize key mappings
+  </Card>
+  <Card title="Custom Operators" icon="screwdriver-wrench" href="/guides/custom-operators">
+    Define custom operators, actions, and motions
+  </Card>
+  <Card title="API Reference" icon="book-open" href="/api/vim">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Migration Guide" icon="arrow-right" href="/migration/from-cm5">
+    Migrate from CodeMirror 5 Vim
+  </Card>
+</CardGroup>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+## Example
+
+```javascript
+import { basicSetup, EditorView } from 'codemirror';
+import { vim } from "@replit/codemirror-vim"
+
+let view = new EditorView({
+  doc: "",
+  extensions: [
+    // Make sure vim is included before other keymaps
+    vim(), 
+    // Include the default keymap and all other keymaps you want to use in insert mode
+    basicSetup, 
+  ],
+  parent: document.querySelector('#editor'),
+})
+```
+
+<Note>
+  Make sure to include the vim extension **before** other keymaps to ensure proper key handling priority.
+</Note>
+
+## Open Source
+
+CodeMirror Vim is open source and maintained by Replit. Contributions are welcome!
+
+<Card title="View on GitHub" icon="github" href="https://github.com/replit/codemirror-vim">
+  Star the repository, report issues, or contribute to the project
 </Card>

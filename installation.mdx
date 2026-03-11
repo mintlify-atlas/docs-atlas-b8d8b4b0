@@ -1,0 +1,82 @@
+---
+title: Installation
+description: Install CodeMirror Vim and its peer dependencies
+---
+
+## Package installation
+
+Install the `@replit/codemirror-vim` package using your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm i @replit/codemirror-vim
+```
+
+```bash yarn
+yarn add @replit/codemirror-vim
+```
+
+```bash pnpm
+pnpm add @replit/codemirror-vim
+```
+</CodeGroup>
+
+## Peer dependencies
+
+CodeMirror Vim requires several CodeMirror 6 packages to function. These are listed as peer dependencies and must be installed separately if you don't already have them in your project.
+
+### Required packages
+
+The following CodeMirror 6 packages (version 6.x.x) are required:
+
+- `@codemirror/commands` - Core editor commands
+- `@codemirror/language` - Language support infrastructure
+- `@codemirror/search` - Search and replace functionality
+- `@codemirror/state` - Editor state management
+- `@codemirror/view` - Editor view layer
+
+### Installing peer dependencies
+
+If you're starting a new CodeMirror project, you can install all required dependencies at once:
+
+<CodeGroup>
+```bash npm
+npm i @replit/codemirror-vim @codemirror/commands @codemirror/language @codemirror/search @codemirror/state @codemirror/view codemirror
+```
+
+```bash yarn
+yarn add @replit/codemirror-vim @codemirror/commands @codemirror/language @codemirror/search @codemirror/state @codemirror/view codemirror
+```
+
+```bash pnpm
+pnpm add @replit/codemirror-vim @codemirror/commands @codemirror/language @codemirror/search @codemirror/state @codemirror/view codemirror
+```
+</CodeGroup>
+
+<Note>
+The `codemirror` package includes `basicSetup` and other useful utilities for quickly setting up an editor. While not strictly required, it's recommended for most projects.
+</Note>
+
+## Version compatibility
+
+CodeMirror Vim is designed to work with CodeMirror 6. All peer dependencies should be version 6.x.x to ensure compatibility.
+
+<Warning>
+CodeMirror Vim is **not** compatible with CodeMirror 5. If you're upgrading from CodeMirror 5, you'll need to migrate your entire editor setup to CodeMirror 6.
+</Warning>
+
+## Verify installation
+
+Once installed, you can verify the package is available by importing it in your code:
+
+```javascript
+import { vim } from "@replit/codemirror-vim";
+
+console.log(vim); // Should output the vim function
+```
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Learn how to set up a basic editor with Vim keybindings
+</Card>

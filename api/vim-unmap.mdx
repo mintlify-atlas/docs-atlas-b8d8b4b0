@@ -1,0 +1,89 @@
+---
+title: 'Vim.unmap()'
+description: 'Remove custom key mappings in Vim mode'
+---
+
+## Overview
+
+The `Vim.unmap()` function removes previously defined key mappings created with `Vim.map()` or `Vim.noremap()`.
+
+## Signature
+
+```typescript
+Vim.unmap(lhs: string, context?: string): void
+```
+
+## Parameters
+
+<ParamField path="lhs" type="string" required>
+  The left-hand side: the key sequence to unmap. This should match the `lhs` parameter used when creating the mapping.
+</ParamField>
+
+<ParamField path="context" type="string">
+  The mode context from which to remove the mapping. Valid values:
+  - `"insert"` - Remove mapping from insert mode
+  - `"normal"` - Remove mapping from normal mode (default)
+  - `"visual"` - Remove mapping from visual mode
+  
+  If omitted, removes the mapping from normal mode.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Unmap in Insert Mode
+
+Remove the `jj` to `<Esc>` mapping:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+// First create a mapping
+Vim.map("jj", "<Esc>", "insert");
+
+// Later, remove it
+Vim.unmap("jj", "insert");
+```
+
+### Unmap in Normal Mode
+
+Remove a normal mode mapping:
+
+```javascript
+// Create a mapping
+Vim.map("Y", "y$");
+
+// Remove it
+Vim.unmap("Y");
+```
+
+### Conditional Unmapping
+
+Unmap based on user preference:
+
+```javascript
+function toggleJJMapping(enabled) {
+  if (enabled) {
+    Vim.map("jj", "<Esc>", "insert");
+  } else {
+    Vim.unmap("jj", "insert");
+  }
+}
+```
+
+## Notes
+
+- Unmapping a non-existent mapping has no effect and does not throw an error
+- The `context` parameter must match the context used when creating the mapping
+- You cannot unmap built-in Vim keybindings, only user-defined mappings
+- Key mappings are global and affect all editor instances
+
+## See Also
+
+- [Vim.map()](/api/vim-map) - Create key mappings
+- [Vim.mapclear()](/api/vim-mapclear) - Remove all mappings for a context

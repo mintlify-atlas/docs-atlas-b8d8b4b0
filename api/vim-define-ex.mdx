@@ -1,0 +1,149 @@
+---
+title: 'Vim.defineEx()'
+description: 'Define custom Ex commands in Vim mode'
+---
+
+## Overview
+
+The `Vim.defineEx()` function allows you to create custom Ex commands (colon commands) in CodeMirror Vim mode. Ex commands are executed from command mode (entered with `:`).  
+
+## Signature
+
+```typescript
+Vim.defineEx(
+  name: string,
+  prefix: string,
+  callback: (cm: CodeMirror, params: ExParams) => void
+): void
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  The full name of the Ex command. This is the complete command name that users can type.
+</ParamField>
+
+<ParamField path="prefix" type="string" required>
+  The shortest unique prefix for the command. Users can type this shorter version instead of the full name.
+  
+  For example, if `name` is `"write"` and `prefix` is `"w"`, users can execute the command with either `:write` or `:w`.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function to execute when the command is invoked. Receives:
+  - `cm` (CodeMirror) - The editor instance
+  - `params` (ExParams) - Command parameters including:
+    - `commandName` (string) - The command name as typed
+    - `argString` (string) - The argument string
+    - `args` (string[]) - Parsed arguments array
+    - `input` (string) - The full command input
+    - `line` (number) - Starting line number
+    - `lineEnd` (number) - Ending line number
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="void">
+  This function does not return a value.
+</ResponseField>
+
+## Examples
+
+### Basic Save Command
+
+Define a `:write` (`:w`) command to save the file:
+
+```javascript
+import { Vim } from "@replit/codemirror-vim";
+
+Vim.defineEx('write', 'w', function(cm) {
+  // Implement save functionality
+  console.log('Saving file...');
+  // Call your save function
+  saveFile(cm.getValue());
+});
+```
+
+### Command with Arguments
+
+Define a command that accepts arguments:
+
+```javascript
+Vim.defineEx('echo', 'ec', function(cm, params) {
+  // Access the arguments
+  const message = params.argString;
+  console.log('Echo:', message);
+  
+  // Show in status bar
+  cm.openNotification(message);
+});
+
+// Usage: :echo Hello, World!
+```
+
+### Line Range Command
+
+Define a command that operates on a line range:
+
+```javascript
+Vim.defineEx('comment', 'com', function(cm, params) {
+  const startLine = params.line;
+  const endLine = params.lineEnd || params.line;
+  
+  // Comment out the specified lines
+  for (let i = startLine; i <= endLine; i++) {
+    const lineText = cm.getLine(i);
+    cm.replaceRange('// ' + lineText, 
+      { line: i, ch: 0 },
+      { line: i, ch: lineText.length }
+    );
+  }
+});
+
+// Usage: :5,10comment (comments lines 5-10)
+```
+
+### Integration with Editor Features
+
+Define a command that integrates with your application:
+
+```javascript
+Vim.defineEx('format', 'fmt', function(cm, params) {
+  const code = cm.getValue();
+  
+  // Format the code using your formatter
+  const formatted = formatCode(code);
+  
+  // Replace editor content
+  cm.setValue(formatted);
+});
+```
+
+## Notes
+
+- The `prefix` must be a prefix of `name`, otherwise an error is thrown
+- Ex commands are global and available in all editor instances
+- If a command with the same name or prefix already exists, it will be overridden
+- Commands are executed in normal mode
+- The `params.line` and `params.lineEnd` are automatically parsed from range syntax (e.g., `:1,5command`)
+
+## ExParams Interface
+
+```typescript
+interface ExParams {
+  commandName: string;      // The command name as entered
+  argString: string;        // Raw argument string
+  input: string;            // Full command input
+  args?: string[];          // Parsed arguments
+  line: number;             // Start line (0-indexed)
+  lineEnd?: number;         // End line (0-indexed)
+  selectionLine: number;    // Selection start
+  selectionLineEnd?: number; // Selection end
+}
+```
+
+## See Also
+
+- [Vim.defineOperator()](/api/vim-define-operator) - Define custom operators
+- [Vim.defineAction()](/api/vim-define-action) - Define custom actions
+- [Vim.map()](/api/vim-map) - Create key mappings

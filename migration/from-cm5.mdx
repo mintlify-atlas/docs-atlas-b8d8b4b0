@@ -1,0 +1,432 @@
+---
+title: 'Migrating from CodeMirror 5'
+description: 'Learn how to migrate your CodeMirror 5 Vim configuration to CodeMirror 6'
+---
+
+## Overview
+
+The `@replit/codemirror-vim` package provides a compatibility layer that allows you to use the familiar CodeMirror 5 Vim API with CodeMirror 6. This makes migration straightforward while taking advantage of CodeMirror 6's improved architecture and performance.
+
+<Note>
+The CM5 Vim API remains largely compatible with CM6 thanks to the `getCM()` compatibility adapter. Most existing code will work with minimal changes.
+</Note>
+
+## Key Architecture Changes
+
+### EditorView vs CodeMirror Instance
+
+In CodeMirror 5, you worked directly with a `CodeMirror` instance. In CodeMirror 6, the main interface is `EditorView`:
+
+**CodeMirror 5:**
+```javascript
+import CodeMirror from 'codemirror';
+import 'codemirror/keymap/vim';
+
+const editor = CodeMirror(document.querySelector('#editor'), {
+  value: "Hello World",
+  keyMap: 'vim'
+});
+```
+
+**CodeMirror 6:**
+```javascript
+import { EditorView, basicSetup } from 'codemirror';
+import { vim } from '@replit/codemirror-vim';
+
+const view = new EditorView({
+  doc: "Hello World",
+  extensions: [
+    vim(), // Include vim before other keymaps
+    basicSetup,
+  ],
+  parent: document.querySelector('#editor'),
+});
+```
+
+### Extension-Based Configuration
+
+CodeMirror 6 uses an extension-based architecture instead of options:
+
+- **CM5**: Configuration through options object
+- **CM6**: Configuration through extensions array
+
+The `vim()` extension must be included **before** other keymaps to ensure Vim bindings take precedence.
+
+## Using the CM5 Compatibility API
+
+The `getCM()` function provides access to a compatibility layer that implements the CM5 Vim API on top of CM6:
+
+```javascript
+import { Vim, getCM } from '@replit/codemirror-vim';
+
+let cm = getCM(view);
+// Use cm to access the CM5 API
+Vim.exitInsertMode(cm);
+Vim.handleKey(cm, "<Esc>");
+```
+
+### The view.cm Property
+
+Alternatively, you can access the compatibility layer directly through the `view.cm` property:
+
+```javascript
+// Both approaches work identically
+let cm = getCM(view);
+let cm = view.cm;
+
+// Then use the CM5 API
+Vim.map("jj", "<Esc>", "insert");
+```
+
+<Tip>
+Using `getCM(view)` is recommended over `view.cm` for type safety and clearer intent, though both work identically.
+</Tip>
+
+## Common Migration Patterns
+
+### Defining Ex Commands
+
+Ex commands work exactly the same way in CM6:
+
+```javascript
+import { Vim } from '@replit/codemirror-vim';
+
+Vim.defineEx('write', 'w', function() {
+  // Save the file
+  console.log('Saving file...');
+});
+
+Vim.defineEx('quit', 'q', function() {
+  // Close the editor
+  console.log('Closing editor...');
+});
+```
+
+<Note>
+The `Vim` object is a global API that doesn't require a `cm` instance for defining commands, maps, or operators.
+</Note>
+
+### Mapping Keys
+
+Key mappings work identically to CM5:
+
+```javascript
+import { Vim } from '@replit/codemirror-vim';
+
+// Map in insert mode
+Vim.map("jj", "<Esc>", "insert");
+
+// Map in normal mode
+Vim.map("Y", "y$");
+
+// Map with custom action
+Vim.map("<C-d>", "<C-d>zz"); // Center after half-page down
+```
+
+### Unmapping Keys
+
+```javascript
+Vim.unmap("jj", "insert");
+Vim.unmap("Y");
+```
+
+### Defining Custom Operators
+
+Custom operators allow you to create new text object operations:
+
+```javascript
+import { Vim } from '@replit/codemirror-vim';
+
+// Add to the default keymap
+defaultKeymap.push({ 
+  keys: 'gq', 
+  type: 'operator', 
+  operator: 'hardWrap' 
+});
+
+Vim.defineOperator("hardWrap", function(cm, operatorArgs, ranges, oldAnchor, newHead) {
+  // Implement hard wrapping logic
+  const textWidth = cm.getOption('textwidth') || 80;
+  
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
+    cm.hardWrap({
+      from: range.head.line,
+      to: range.anchor.line,
+      column: textWidth
+    });
+  }
+  
+  // Return new cursor position
+  return newHead;
+});
+```
+
+## What Changed
+
+### Extension Loading
+
+<Warning>
+The `vim()` extension must be loaded **before** other keymaps like `basicSetup`. Otherwise, default keybindings may conflict with Vim bindings.
+</Warning>
+
+**Correct order:**
+```javascript
+new EditorView({
+  extensions: [
+    vim(),        // Load first
+    basicSetup,   // Load after
+  ]
+});
+```
+
+**Incorrect order:**
+```javascript
+new EditorView({
+  extensions: [
+    basicSetup,   // Will override Vim keys
+    vim(),        // Too late
+  ]
+});
+```
+
+### Selection Rendering
+
+CodeMirror 6 requires explicit configuration for visual mode selection rendering:
+
+```javascript
+import { EditorView, basicSetup } from 'codemirror';
+import { vim } from '@replit/codemirror-vim';
+import { drawSelection } from '@codemirror/view';
+
+new EditorView({
+  extensions: [
+    vim(),
+    drawSelection(), // Required for visual mode
+    // ... other extensions
+  ]
+});
+```
+
+<Note>
+If you're using `basicSetup`, the `drawSelection` plugin is already included. Only add it explicitly if you're building a custom configuration.
+</Note>
+
+### Status Bar
+
+The status bar is now opt-in through the `status` option:
+
+```javascript
+import { vim } from '@replit/codemirror-vim';
+
+new EditorView({
+  extensions: [
+    vim({ status: true }), // Enable status bar
+  ]
+});
+```
+
+The status bar displays:
+- Current mode (NORMAL, INSERT, VISUAL, etc.)
+- Pending keystrokes
+- Command output
+
+## What Stayed the Same
+
+The following APIs work identically to CM5:
+
+### Vim Global API
+
+All global Vim configuration methods remain unchanged:
+
+- `Vim.defineEx()` - Define ex commands
+- `Vim.map()` - Map keys
+- `Vim.unmap()` - Unmap keys
+- `Vim.defineOperator()` - Define custom operators
+- `Vim.defineMotion()` - Define custom motions
+- `Vim.defineAction()` - Define custom actions
+- `Vim.handleKey()` - Programmatically trigger key events
+- `Vim.exitInsertMode()` - Exit insert mode
+- `Vim.exitVisualMode()` - Exit visual mode
+
+### CodeMirror Instance Methods
+
+When using the compatibility layer (`getCM(view)`), these methods work as expected:
+
+- `cm.getCursor()` - Get cursor position
+- `cm.setCursor()` - Set cursor position
+- `cm.getSelection()` - Get selected text
+- `cm.replaceSelection()` - Replace selection
+- `cm.getRange()` - Get text range
+- `cm.replaceRange()` - Replace text range
+- `cm.getValue()` - Get entire document
+- `cm.setValue()` - Set entire document
+
+## Migration Checklist
+
+<Steps>
+  <Step title="Update Package Dependencies">
+    Replace CodeMirror 5 dependencies with CodeMirror 6:
+    
+    ```bash
+    npm uninstall codemirror
+    npm install codemirror @replit/codemirror-vim
+    ```
+  </Step>
+  
+  <Step title="Update Editor Initialization">
+    Replace CM5 initialization with CM6 `EditorView`:
+    
+    ```javascript
+    import { EditorView, basicSetup } from 'codemirror';
+    import { vim } from '@replit/codemirror-vim';
+    
+    const view = new EditorView({
+      doc: initialContent,
+      extensions: [vim(), basicSetup],
+      parent: document.querySelector('#editor'),
+    });
+    ```
+  </Step>
+  
+  <Step title="Update API Access">
+    Replace direct CodeMirror access with `getCM()`:
+    
+    ```javascript
+    import { Vim, getCM } from '@replit/codemirror-vim';
+    
+    const cm = getCM(view);
+    Vim.handleKey(cm, "<Esc>");
+    ```
+  </Step>
+  
+  <Step title="Update Vim Configuration">
+    Move Vim configuration to use the imported `Vim` object:
+    
+    ```javascript
+    // Ex commands
+    Vim.defineEx('write', 'w', saveFile);
+    
+    // Key mappings
+    Vim.map("jj", "<Esc>", "insert");
+    Vim.map("Y", "y$");
+    
+    // Custom operators
+    Vim.defineOperator("hardWrap", wrapFunction);
+    ```
+  </Step>
+  
+  <Step title="Test Visual Mode">
+    Ensure `drawSelection` is available (included in `basicSetup`):
+    
+    ```javascript
+    import { drawSelection } from '@codemirror/view';
+    
+    // Only needed if NOT using basicSetup
+    new EditorView({
+      extensions: [vim(), drawSelection()],
+    });
+    ```
+  </Step>
+  
+  <Step title="Verify Event Handlers">
+    Update event handlers to use CM6's event system if needed. The compatibility layer handles most events automatically.
+  </Step>
+</Steps>
+
+## Breaking Changes
+
+### Removed Methods
+
+Some CM5 methods are not available in the compatibility layer:
+
+- `cm.addKeyMap()` / `cm.removeKeyMap()` - Use CM6 keymap extensions instead
+- `cm.setOption()` - Use CM6 configuration compartments and effects
+- `cm.getOption()` - Most options are accessible, but some may require CM6 state access
+
+### Behavior Differences
+
+<Warning>
+**Read-only Mode:** The `readOnly` option works differently in CM6. Use the `EditorState.readOnly` facet instead of the CM5 option.
+</Warning>
+
+**CM5:**
+```javascript
+cm.setOption('readOnly', true);
+```
+
+**CM6:**
+```javascript
+import { EditorState } from '@codemirror/state';
+
+view.dispatch({
+  effects: StateEffect.appendConfig.of(EditorState.readOnly.of(true))
+});
+```
+
+## Example: Complete Migration
+
+### Before (CM5)
+
+```javascript
+import CodeMirror from 'codemirror';
+import 'codemirror/keymap/vim';
+
+const editor = CodeMirror(document.getElementById('editor'), {
+  value: 'Hello World',
+  keyMap: 'vim',
+  lineNumbers: true
+});
+
+// Custom ex command
+CodeMirror.Vim.defineEx('write', 'w', function(cm) {
+  saveFile(cm.getValue());
+});
+
+// Key mapping
+CodeMirror.Vim.map('jj', '<Esc>', 'insert');
+
+// Exit insert mode programmatically
+CodeMirror.Vim.exitInsertMode(editor);
+```
+
+### After (CM6)
+
+```javascript
+import { EditorView, basicSetup } from 'codemirror';
+import { vim, Vim, getCM } from '@replit/codemirror-vim';
+
+const view = new EditorView({
+  doc: 'Hello World',
+  extensions: [
+    vim({ status: true }),
+    basicSetup,
+  ],
+  parent: document.getElementById('editor'),
+});
+
+// Custom ex command (unchanged)
+Vim.defineEx('write', 'w', function(cm) {
+  saveFile(view.state.doc.toString());
+});
+
+// Key mapping (unchanged)
+Vim.map('jj', '<Esc>', 'insert');
+
+// Exit insert mode programmatically
+const cm = getCM(view);
+Vim.exitInsertMode(cm);
+```
+
+## Getting Help
+
+If you encounter issues during migration:
+
+1. Check the [API Reference](/api-reference/vim-object) for detailed method documentation
+2. Review the [Configuration Guide](/essentials/configuration) for extension setup
+3. See [Examples](/essentials/examples) for common use cases
+4. Open an issue on [GitHub](https://github.com/replit/codemirror-vim) for bugs or feature requests
+
+<Tip>
+Most CM5 Vim code will work with minimal changes. Start by updating imports and initialization, then test your existing configuration.
+</Tip>
