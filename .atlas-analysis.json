@@ -1,0 +1,89 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "CodeMirror Vim",
+  "projectDescription": "Vim keybindings for CodeMirror 6 with full support for normal, visual, and insert modes",
+  "theme": "palm",
+  "primaryColor": "#cb0404",
+  "lightColor": "#f3d2d2",
+  "darkColor": "#e37b84",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/key-mappings",
+              "guides/ex-commands",
+              "guides/custom-operators",
+              "guides/visual-mode",
+              "guides/status-bar"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migration/from-cm5"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/vim",
+              "api/get-cm"
+            ]
+          },
+          {
+            "group": "Vim API",
+            "pages": [
+              "api/vim-map",
+              "api/vim-unmap",
+              "api/vim-define-ex",
+              "api/vim-define-operator",
+              "api/vim-define-action",
+              "api/vim-define-motion",
+              "api/vim-handle-key",
+              "api/vim-exit-insert-mode"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Complete Vim keybindings for CodeMirror 6",
+    "Support for normal, visual, and insert modes",
+    "Custom key mappings with Vim.map() and Vim.unmap()",
+    "Define custom ex commands, operators, actions, and motions",
+    "CM5 Vim API compatibility layer",
+    "Visual block and line selection support",
+    "Optional status bar showing current mode",
+    "Event system for mode changes and key handling"
+  ],
+  "publicApiSurface": [
+    "vim(options?)",
+    "Vim.map(keys, mapping, context?)",
+    "Vim.unmap(keys, context?)",
+    "Vim.defineEx(name, prefix, callback)",
+    "Vim.defineOperator(name, callback)",
+    "Vim.defineAction(name, callback)",
+    "Vim.defineMotion(name, callback)",
+    "Vim.handleKey(cm, key, origin?)",
+    "Vim.exitInsertMode(cm)",
+    "getCM(view)"
+  ]
+}
